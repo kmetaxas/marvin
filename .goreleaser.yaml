@@ -1,0 +1,125 @@
+version: 2
+
+project_name: marvin
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: marvin
+    main: ./cmd/marvin
+    binary: marvin
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  # this is internal, plus it should probably be a command on marvin instead of a separate cli tool.
+  # Lets comment it out for now
+  #- id: provider-schema
+  #  main: ./cmd/provider-schema
+  #  binary: provider-schema
+  #  env:
+  #    - CGO_ENABLED=0
+  #  goos:
+  #    - linux
+  #    - darwin
+  #  goarch:
+  #    - amd64
+  #    - arm64
+  #  ldflags:
+  #    - -s -w
+  #    - -X main.version={{.Version}}
+  #    - -X main.commit={{.Commit}}
+  #    - -X main.date={{.Date}}
+
+archives:
+  - id: marvin
+    builds: [marvin]
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    files:
+      - src: LICENSE*
+        dst: .
+      - src: README*
+        dst: .
+
+  - id: provider-schema
+    builds: [provider-schema]
+    formats: [tar.gz]
+    name_template: >-
+      provider-schema_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    files:
+      - src: LICENSE*
+        dst: .
+      - src: README*
+        dst: .
+
+# not just yet...
+#kos:
+#  - id: marvin
+#    repository: ghcr.io/${{ .Env.GITHUB_REPOSITORY_OWNER }}/marvin
+#    tags:
+#      - latest
+#      - "{{.Version}}"
+#    bare: true
+#    preserve_import_paths: false
+#    platforms:
+#      - linux/amd64
+#      - linux/arm64
+#    build: marvin
+#    base_image: gcr.io/distroless/static:nonroot
+#
+#- id: provider-schema
+#  repository: ghcr.io/${{ .Env.GITHUB_REPOSITORY_OWNER }}/provider-schema
+#  tags:
+#    - latest
+#    - "{{.Version}}"
+#  bare: true
+#  preserve_import_paths: false
+#  platforms:
+#    - linux/amd64
+#    - linux/arm64
+#  build: provider-schema
+#  base_image: gcr.io/distroless/static:nonroot
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+      - "^style:"
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:'
+      order: 0
+    - title: "Bug Fixes"
+      regexp: '^.*?fix(\(.+\))??!?:'
+      order: 1
+    - title: "Other Changes"
+      order: 999
