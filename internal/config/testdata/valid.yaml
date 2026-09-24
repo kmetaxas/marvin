@@ -1,0 +1,33 @@
+agent_id: "marvin-abc123"
+registration_key: "org-reg-key"
+labels:
+  - "env:production"
+control_plane:
+  address: "cp.example.com:443"
+  tls:
+    enabled: true
+    insecure_skip_verify: false
+authentication:
+  secret_key:
+    key: "super-secret-token"
+metadata:
+  name: "marvin-us-east-1"
+  cluster: "prod-us-east-1"
+  region: "us-east-1"
+  environment: "production"
+  hostname: "server1.us-east.example.com"
+  local_ip: "10.0.0.1"
+  provider: "aws"
+  availability_zone: "us-east-1a"
+  vm_id: "i-1234567890abcdef0"
+  os: "Linux"
+  os_version: "Ubuntu 22.04.3 LTS"
+  arch: "x86_64"
+prometheus:
+  url: "http://prometheus:9090"
+capabilities:
+  enabled:
+    - "network.dns.lookup"
+    - "network.icmp.echo_request"
+logging:
+  level: "debug"
