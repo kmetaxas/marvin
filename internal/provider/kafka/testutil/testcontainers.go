@@ -343,6 +343,7 @@ func StartKafkaWithMTLS(t *testing.T) (bootstrapServers []string, cleanup func()
 
 	dir, err := os.MkdirTemp("", "marvin-kafka-mtls-*")
 	require.NoError(t, err, "failed to create temp dir")
+	require.NoError(t, os.Chmod(dir, 0o755), "failed to chmod temp dir")
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 
 	caPath, clientCertPath, clientKeyPath, keystorePath, truststorePath := generateMTLSCertificates(t, dir)
@@ -757,6 +758,7 @@ func StartKafkaWithRBAC(t *testing.T) (bootstrapServers []string, mdsURL string,
 
 	dir, err := os.MkdirTemp("", "marvin-kafka-rbac-*")
 	require.NoError(t, err, "failed to create temp dir")
+	require.NoError(t, os.Chmod(dir, 0o755), "failed to chmod temp dir")
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 
 	keypairPath, publicPath := generateTokenKeypair(t, dir)

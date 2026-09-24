@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -54,6 +55,9 @@ func TestPingDefaultCount(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.NotContains(t, res.Error, "count exceeds maximum")
+	if strings.Contains(res.Error, "permission denied") {
+		t.Skip("ICMP ping requires unprivileged ping socket privileges; skipping in this environment")
+	}
 	assert.NotNil(t, res.Data)
 }
 
