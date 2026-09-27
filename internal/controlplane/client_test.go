@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"net"
 	"os"
@@ -512,6 +513,127 @@ func TestClientUpdateConfigHandlerDoesNotDeadlock(t *testing.T) {
 		assert.NotZero(t, hb.GetTimestampUnixMs())
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for heartbeat after UpdateConfig")
+	}
+}
+
+func TestConcurrencySemaphoreBlocksAndFanoutMetadata(t *testing.T) {
+	t.Parallel()
+
+	var mock *mockControlPlaneServer
+	enteredCh := make(chan struct{}, 2)
+	finishCh := make(chan struct{})
+	results := make(chan *marvinpb.CapabilityResult, 2)
+
+	server, listener, mock := newMockGRPCServer(t, func(stream marvinpb.MarvinService_ConnectServer) error {
+		msg, err := mock.recvAgentMessage(stream)
+		require.NoError(t, err)
+		require.NotNil(t, msg.GetRegister())
+
+		require.NoError(t, mock.sendControlMessage(stream, &marvinpb.ControlMessage{
+			Payload: &marvinpb.ControlMessage_Registered{Registered: &marvinpb.Registered{HeartbeatIntervalSeconds: 1}},
+		}))
+
+		for i := 1; i <= 2; i++ {
+			require.NoError(t, mock.sendControlMessage(stream, &marvinpb.ControlMessage{
+				CommandId: fmt.Sprintf("cmd-%d", i),
+				Payload: &marvinpb.ControlMessage_ExecuteCapability{ExecuteCapability: &marvinpb.ExecuteCapability{
+					SessionId:      "session-1",
+					ThreadId:       "thread-1",
+					CapabilityName: "network.dns.lookup",
+					ParametersJson: `{"host":"example.com"}`,
+					TargetSetId:    "target-set-abc",
+					ExecutionMode:  "fanout",
+					ResultIndex:    int32(i),
+				}},
+			}))
+		}
+
+		for {
+			msg, err := mock.recvAgentMessage(stream)
+			if err != nil {
+				return err
+			}
+			if result := msg.GetCapabilityResult(); result != nil {
+				results <- result
+				if len(results) == 2 {
+					return nil
+				}
+			}
+		}
+	})
+	defer server.Stop()
+
+	restore := stubBufDialer(t, listener)
+	defer restore()
+
+	client, err := NewClient(
+		config.ControlPlane{Address: "bufnet", TLS: config.TLSConfig{Enabled: boolPtr(false)}, MaxConcurrentExecutions: 1},
+		SecretKeyAuthenticator{Key: "test-token"},
+		WithTaskExecutor(stubTaskExecutor{execute: func(ctx context.Context, _ string, _ map[string]any) (task.Result, error) {
+			enteredCh <- struct{}{}
+			<-finishCh
+			return task.Result{Success: true, Data: map[string]any{"ok": true}}, nil
+		}}),
+		WithAgentID("agent-semaphore"),
+	)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, client.Close()) }()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	require.NoError(t, client.Register(ctx, agentmetadata.Metadata{Name: "agent-semaphore", Cluster: "c", Region: "r", Environment: "e"}, nil))
+
+	// Wait for first goroutine to enter executor.
+	select {
+	case <-enteredCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("first goroutine should have entered executor")
+	}
+
+	// Verify second goroutine is NOT in executor (blocked on semaphore).
+	select {
+	case <-enteredCh:
+		t.Fatal("second goroutine should not have entered executor while first holds semaphore")
+	case <-time.After(200 * time.Millisecond):
+	}
+
+	// Free first goroutine.
+	finishCh <- struct{}{}
+
+	// Now second goroutine should acquire semaphore and enter executor.
+	select {
+	case <-enteredCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("second goroutine should have entered executor after first released semaphore")
+	}
+
+	// Free second goroutine.
+	finishCh <- struct{}{}
+
+	// Collect results.
+	var received [2]*marvinpb.CapabilityResult
+	for i := 0; i < 2; i++ {
+		select {
+		case r := <-results:
+			idx := r.GetResultIndex()
+			if idx >= 1 && idx <= 2 {
+				received[idx-1] = r
+			} else {
+				t.Fatalf("unexpected result_index %d", idx)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out waiting for result %d", i)
+		}
+	}
+
+	for i, r := range received {
+		require.NotNil(t, r)
+		assert.Equal(t, fmt.Sprintf("cmd-%d", i+1), r.GetCommandId())
+		assert.Equal(t, "target-set-abc", r.GetTargetSetId())
+		assert.Equal(t, "fanout", r.GetExecutionMode())
+		assert.Equal(t, int32(i+1), r.GetResultIndex())
+		assert.True(t, r.GetSuccess())
 	}
 }
 

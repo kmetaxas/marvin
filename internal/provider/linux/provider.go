@@ -78,6 +78,18 @@ func (p *Provider) CurrentReader() *procfs.Reader {
 	return p.reader
 }
 
+// AcquireReader returns the current procfs reader and a release function
+// that must be called when the task is done. This keeps the reader alive
+// across reconfiguration.
+func (p *Provider) AcquireReader() *procfs.Reader {
+	p.mu.RLock()
+	return p.reader
+}
+
+func (p *Provider) ReleaseReader() {
+	p.mu.RUnlock()
+}
+
 func applyLinuxDefaults(cfg config.LinuxConfig) config.LinuxConfig {
 	if cfg.AllowedReadPaths == nil {
 		cfg.AllowedReadPaths = DefaultAllowedReadPaths()

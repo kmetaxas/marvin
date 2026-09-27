@@ -150,8 +150,9 @@ type Logging struct {
 }
 
 type ControlPlane struct {
-	Address string    `yaml:"address"`
-	TLS     TLSConfig `yaml:"tls"`
+	Address                 string    `yaml:"address"`
+	TLS                     TLSConfig `yaml:"tls"`
+	MaxConcurrentExecutions int       `yaml:"max_concurrent_executions,omitempty"`
 }
 
 type TLSConfig struct {

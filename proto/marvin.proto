@@ -130,6 +130,13 @@ message CapabilityResult {
   // Required for fan-out result ordering when multiple commands are in flight
   // to the same Marvin concurrently.
   int32 result_index = 9;
+
+  // Echo of target_set_id from ExecuteCapability for fan-out correlation.
+  string target_set_id = 10;
+
+  // Echo of execution_mode from ExecuteCapability so the control plane
+  // can distinguish single vs fanout results.
+  string execution_mode = 11;
 }
 
 // Agent-generated log line forwarded to the control plane.

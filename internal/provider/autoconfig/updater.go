@@ -3,6 +3,7 @@ package autoconfig
 import (
 	"reflect"
 	"sync"
+	"time"
 )
 
 type Closer func()
@@ -13,9 +14,12 @@ type Build[T any, C any] func(cfg T) (C, error)
 type Close[C any] func(client C)
 
 type State[T any, C any] struct {
-	mu     *sync.RWMutex
-	config T
-	client C
+	mu           *sync.RWMutex
+	config       T
+	client       C
+	pendingClose []C
+	closeFn      Close[C]
+	draining     bool
 }
 
 func NewState[T any, C any](mu *sync.RWMutex, cfg T, client C) *State[T, C] {
@@ -47,6 +51,10 @@ type Options[T any, C any] struct {
 func Apply[T any, C any](s *State[T, C], raw map[string]any, opts Options[T, C]) (changed bool, recreated bool, err error) {
 	if opts.Parse == nil {
 		panic("autoconfig: nil Parse")
+	}
+
+	if s.closeFn == nil && opts.Close != nil {
+		s.closeFn = opts.Close
 	}
 
 	base := s.Config()
@@ -98,14 +106,32 @@ func Apply[T any, C any](s *State[T, C], raw map[string]any, opts Options[T, C])
 	if shouldRecreate && opts.Build != nil {
 		s.client = newClient
 	}
+	if shouldRecreate && opts.Close != nil {
+		s.pendingClose = append(s.pendingClose, oldClient)
+		if !s.draining {
+			s.draining = true
+			go s.drainPendingClose(5 * time.Second)
+		}
+	}
 	s.mu.Unlock()
 
 	clientRecreated := shouldRecreate && opts.Build != nil
-	if clientRecreated && opts.Close != nil {
-		opts.Close(oldClient)
-	}
 	if opts.OnChanged != nil {
 		opts.OnChanged(currentCfg, newCfg, clientRecreated)
 	}
 	return true, clientRecreated, nil
+}
+
+func (s *State[T, C]) drainPendingClose(grace time.Duration) {
+	time.Sleep(grace)
+	s.mu.Lock()
+	toClose := s.pendingClose
+	s.pendingClose = nil
+	s.draining = false
+	s.mu.Unlock()
+	for _, c := range toClose {
+		if s.closeFn != nil {
+			s.closeFn(c)
+		}
+	}
 }
