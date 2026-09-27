@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,9 +42,9 @@ func TestApplyNoChange(t *testing.T) {
 
 func TestApplyChangeBuildClose(t *testing.T) {
 	t.Parallel()
-	mu := &sync.RWMutex{}
+	mu := sync.RWMutex{}
 	oldClient := &testClient{id: "old"}
-	state := NewState(mu, testConfig{Value: "old"}, oldClient)
+	state := NewState(&mu, testConfig{Value: "old"}, oldClient)
 	var changedHookCalled bool
 
 	changed, recreated, err := Apply(state, map[string]any{"value": "new"}, Options[testConfig, *testClient]{
@@ -64,9 +65,11 @@ func TestApplyChangeBuildClose(t *testing.T) {
 	assert.True(t, changed)
 	assert.True(t, recreated)
 	assert.True(t, changedHookCalled)
-	assert.True(t, oldClient.closed)
 	assert.Equal(t, testConfig{Value: "new"}, state.Config())
 	assert.Equal(t, "new", state.Client().id)
+	// Close is deferred by a grace period so in-flight requests can finish.
+	assert.False(t, oldClient.closed, "client should not be closed immediately after Apply")
+	require.Eventually(t, func() bool { return oldClient.closed }, 10*time.Second, 10*time.Millisecond, "client should eventually be closed after grace period")
 }
 
 func TestApplyBuildError(t *testing.T) {

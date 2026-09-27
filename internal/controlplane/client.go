@@ -74,6 +74,8 @@ type Client struct {
 	inFlight  sync.WaitGroup
 	closeOnce sync.Once
 
+	concurrencySem chan struct{}
+
 	heartbeatAckMu   sync.Mutex
 	lastHeartbeatAck time.Time
 }
@@ -184,6 +186,12 @@ func NewClient(cfg config.ControlPlane, auth Authenticator, opts ...ClientOption
 		backoffBase: defaultBackoffBase,
 		backoffMax:  defaultBackoffMax,
 	}
+
+	maxConcurrency := cfg.MaxConcurrentExecutions
+	if maxConcurrency <= 0 {
+		maxConcurrency = 10
+	}
+	client.concurrencySem = make(chan struct{}, maxConcurrency)
 	for _, opt := range opts {
 		opt(client)
 	}
@@ -523,10 +531,24 @@ func (c *Client) dispatchCapabilityExecution(ctx context.Context, stream grpc.Bi
 		return
 	}
 
+	select {
+	case c.concurrencySem <- struct{}{}:
+	case <-ctx.Done():
+		c.log().Debug("capability execution dropped: context done before acquiring semaphore", "command_id", commandID)
+		return
+	}
+
 	c.inFlight.Go(func() {
+		defer func() { <-c.concurrencySem }()
+
 		result := c.executeCapability(ctx, commandID, req)
+
+		c.stateMu.RLock()
+		agentID := c.regState.agentID
+		c.stateMu.RUnlock()
+
 		if err := c.safeSend(ctx, stream, &marvinpb.AgentMessage{
-			AgentId: c.regState.agentID,
+			AgentId: agentID,
 			Payload: &marvinpb.AgentMessage_CapabilityResult{CapabilityResult: result},
 		}); err != nil {
 			return
@@ -542,6 +564,9 @@ func (c *Client) executeCapability(ctx context.Context, commandID string, req *m
 		SessionId:      req.GetSessionId(),
 		ThreadId:       req.GetThreadId(),
 		CapabilityName: capabilityName,
+		ResultIndex:    req.GetResultIndex(),
+		TargetSetId:    req.GetTargetSetId(),
+		ExecutionMode:  req.GetExecutionMode(),
 	}
 
 	c.log().Info("control plane received capability execution request", "capability", capabilityName, "command_id", commandID, "session_id", req.GetSessionId())
@@ -659,7 +684,9 @@ func (c *Client) UpdateCapabilities(capabilities []capability.Capability) {
 }
 
 func (c *Client) newRegisterMessage() *marvinpb.AgentMessage {
+	c.stateMu.RLock()
 	regState := c.regState
+	c.stateMu.RUnlock()
 	return &marvinpb.AgentMessage{
 		AgentId: regState.agentID,
 		Payload: &marvinpb.AgentMessage_Register{Register: &marvinpb.Register{
@@ -674,8 +701,11 @@ func (c *Client) newRegisterMessage() *marvinpb.AgentMessage {
 }
 
 func (c *Client) newHeartbeatMessage() *marvinpb.AgentMessage {
+	c.stateMu.RLock()
+	agentID := c.regState.agentID
+	c.stateMu.RUnlock()
 	return &marvinpb.AgentMessage{
-		AgentId: c.regState.agentID,
+		AgentId: agentID,
 		Payload: &marvinpb.AgentMessage_Heartbeat{Heartbeat: &marvinpb.Heartbeat{
 			TimestampUnixMs: time.Now().UTC().UnixMilli(),
 		}},
