@@ -10,6 +10,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork v1.1.0
 	github.com/google/nftables v0.3.0
 	github.com/invopop/jsonschema v0.14.0
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/moby/moby/api v1.55.0
 	github.com/prometheus-community/pro-bing v0.4.0
@@ -70,6 +71,9 @@ require (
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
 	github.com/jcmturner/gofork v1.7.6 // indirect

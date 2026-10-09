@@ -19,6 +19,7 @@ import (
 	"github.com/marvin-agent/marvin/internal/provider/linux"
 	logprovider "github.com/marvin-agent/marvin/internal/provider/log"
 	"github.com/marvin-agent/marvin/internal/provider/network"
+	"github.com/marvin-agent/marvin/internal/provider/postgres"
 	"github.com/marvin-agent/marvin/internal/provider/prometheus"
 	"github.com/marvin-agent/marvin/internal/registry"
 	"github.com/marvin-agent/marvin/internal/task"
@@ -189,6 +190,7 @@ func exampleProviders(cfg config.Config) []provider.Provider {
 		kafka.NewProvider(cfg.Kafka),
 		linux.NewProvider(cfg.Linux),
 		logprovider.NewProvider(cfg.Graylog),
+		postgres.NewProvider(cfg.Postgres),
 		provider.BaseProvider{
 			ProviderName: "os",
 			ProviderCapabilities: []capability.Capability{

@@ -31,6 +31,7 @@ type Config struct {
 	Kafka           KafkaConfig            `yaml:"kafka"`
 	Linux           LinuxConfig            `yaml:"linux"`
 	Graylog         GraylogConfig          `yaml:"graylog"`
+	Postgres        PostgresConfig         `yaml:"postgres"`
 }
 
 type PrometheusConfig struct {
@@ -208,6 +209,38 @@ type GraylogGuardrails struct {
 	QueryTimeout        time.Duration `yaml:"query_timeout,omitempty"`
 }
 
+type PostgresConfig struct {
+	Host            string             `yaml:"host" json:"host"`
+	Port            int                `yaml:"port,omitempty" json:"port,omitempty"`
+	Database        string             `yaml:"database,omitempty" json:"database,omitempty"`
+	User            string             `yaml:"user,omitempty" json:"user,omitempty"`
+	Password        string             `yaml:"password,omitempty" json:"password,omitempty"`
+	DSN             string             `yaml:"dsn,omitempty" json:"dsn,omitempty"`
+	ConnectTimeout  time.Duration      `yaml:"connect_timeout,omitempty" json:"connect_timeout,omitempty"`
+	MaxConns        int32              `yaml:"max_conns,omitempty" json:"max_conns,omitempty"`
+	MinConns        int32              `yaml:"min_conns,omitempty" json:"min_conns,omitempty"`
+	ConnMaxLifetime time.Duration      `yaml:"conn_max_lifetime,omitempty" json:"conn_max_lifetime,omitempty"`
+	TLS             PostgresTLSConfig  `yaml:"tls,omitempty" json:"tls,omitempty"`
+	Guardrails      PostgresGuardrails `yaml:"guardrails,omitempty" json:"guardrails,omitempty"`
+}
+
+type PostgresTLSConfig struct {
+	Enabled            bool   `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	CAFile             string `yaml:"ca_file,omitempty" json:"ca_file,omitempty"`
+	CAData             string `yaml:"ca_data,omitempty" json:"ca_data,omitempty"`
+	CertFile           string `yaml:"cert_file,omitempty" json:"cert_file,omitempty"`
+	CertData           string `yaml:"cert_data,omitempty" json:"cert_data,omitempty"`
+	KeyFile            string `yaml:"key_file,omitempty" json:"key_file,omitempty"`
+	KeyData            string `yaml:"key_data,omitempty" json:"key_data,omitempty"`
+	InsecureSkipVerify bool   `yaml:"insecure_skip_verify,omitempty" json:"insecure_skip_verify,omitempty"`
+}
+
+type PostgresGuardrails struct {
+	MaxRows            int           `yaml:"max_rows,omitempty" json:"max_rows,omitempty"`
+	StatementTimeout   time.Duration `yaml:"statement_timeout,omitempty" json:"statement_timeout,omitempty"`
+	MaxResultSizeBytes int           `yaml:"max_result_size_bytes,omitempty" json:"max_result_size_bytes,omitempty"`
+}
+
 type Capabilities struct {
 	Enabled []string `yaml:"enabled"`
 }
@@ -295,6 +328,11 @@ func (c *Config) ValidateProviderConfigs() []error {
 	if c.hasGraylogCapabilityEnabled() {
 		if err := c.Graylog.Validate(); err != nil {
 			warnings = append(warnings, fmt.Errorf("graylog config invalid, capabilities will be unavailable: %w", err))
+		}
+	}
+	if c.hasPostgresCapabilityEnabled() {
+		if err := c.Postgres.Validate(); err != nil {
+			warnings = append(warnings, fmt.Errorf("postgres config invalid, capabilities will be unavailable: %w", err))
 		}
 	}
 	return warnings
@@ -557,6 +595,46 @@ func (g GraylogConfig) Validate() error {
 		}
 	default:
 		return fmt.Errorf("graylog.auth.type: unsupported auth type %q", g.Auth.Type)
+	}
+	return nil
+}
+
+func (c Config) hasPostgresCapabilityEnabled() bool {
+	for _, name := range c.Capabilities.Enabled {
+		if capability.IsPattern(name) {
+			matched, err := capability.Match("postgres.query.execute", name)
+			if err == nil && matched {
+				return true
+			}
+		}
+		if strings.HasPrefix(name, "postgres.") {
+			return true
+		}
+	}
+	return false
+}
+
+func (p PostgresConfig) Validate() error {
+	usingDSN := p.DSN != ""
+	if !usingDSN {
+		if p.Host == "" {
+			return fmt.Errorf("postgres.host or postgres.dsn is required")
+		}
+		if p.Port != 0 && (p.Port < 1 || p.Port > 65535) {
+			return fmt.Errorf("postgres.port must be between 1 and 65535")
+		}
+		if p.Database == "" {
+			return fmt.Errorf("postgres.database is required")
+		}
+	}
+	if p.Guardrails.MaxRows < 0 {
+		return fmt.Errorf("postgres.guardrails.max_rows must be non-negative")
+	}
+	if p.Guardrails.StatementTimeout < 0 {
+		return fmt.Errorf("postgres.guardrails.statement_timeout must be non-negative")
+	}
+	if p.Guardrails.MaxResultSizeBytes < 0 {
+		return fmt.Errorf("postgres.guardrails.max_result_size_bytes must be non-negative")
 	}
 	return nil
 }

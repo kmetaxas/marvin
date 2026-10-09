@@ -19,6 +19,7 @@ import (
 	"github.com/marvin-agent/marvin/internal/provider/linux"
 	logprovider "github.com/marvin-agent/marvin/internal/provider/log"
 	"github.com/marvin-agent/marvin/internal/provider/network"
+	"github.com/marvin-agent/marvin/internal/provider/postgres"
 	"github.com/marvin-agent/marvin/internal/provider/prometheus"
 	"github.com/marvin-agent/marvin/pkg/capability"
 )
@@ -95,6 +96,10 @@ var providerFactories = map[string]factory{
 	"log": {
 		create:     func() provider.Provider { return logprovider.NewProvider(config.GraylogConfig{}) },
 		configType: config.GraylogConfig{},
+	},
+	"postgres": {
+		create:     func() provider.Provider { return postgres.NewProvider(config.PostgresConfig{}) },
+		configType: config.PostgresConfig{},
 	},
 	"os": {
 		create: func() provider.Provider {

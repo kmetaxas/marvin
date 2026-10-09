@@ -28,7 +28,7 @@ func TestExampleProviders(t *testing.T) {
 	t.Parallel()
 
 	providers := exampleProviders(config.Config{})
-	require.Len(t, providers, 8)
+	require.Len(t, providers, 9)
 	assert.Equal(t, "network", providers[0].Name())
 	assert.Equal(t, "azure", providers[1].Name())
 	assert.Equal(t, "kubernetes", providers[2].Name())
@@ -36,7 +36,8 @@ func TestExampleProviders(t *testing.T) {
 	assert.Equal(t, "kafka", providers[4].Name())
 	assert.Equal(t, "linux", providers[5].Name())
 	assert.Equal(t, "log", providers[6].Name())
-	assert.Equal(t, "os", providers[7].Name())
+	assert.Equal(t, "postgres", providers[7].Name())
+	assert.Equal(t, "os", providers[8].Name())
 	assert.Len(t, providers[0].Capabilities(), 5)
 	assert.Len(t, providers[3].Capabilities(), 20)
 	assert.Len(t, providers[4].Capabilities(), 38)
