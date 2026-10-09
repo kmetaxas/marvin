@@ -211,10 +211,10 @@ type GraylogGuardrails struct {
 
 type PostgresConfig struct {
 	Host            string             `yaml:"host" json:"host"`
-	Port            int                `yaml:"port" json:"port"`
-	Database        string             `yaml:"database" json:"database"`
-	User            string             `yaml:"user" json:"user"`
-	Password        string             `yaml:"password" json:"password"`
+	Port            int                `yaml:"port,omitempty" json:"port,omitempty"`
+	Database        string             `yaml:"database,omitempty" json:"database,omitempty"`
+	User            string             `yaml:"user,omitempty" json:"user,omitempty"`
+	Password        string             `yaml:"password,omitempty" json:"password,omitempty"`
 	DSN             string             `yaml:"dsn,omitempty" json:"dsn,omitempty"`
 	ConnectTimeout  time.Duration      `yaml:"connect_timeout,omitempty" json:"connect_timeout,omitempty"`
 	MaxConns        int32              `yaml:"max_conns,omitempty" json:"max_conns,omitempty"`
@@ -225,20 +225,20 @@ type PostgresConfig struct {
 }
 
 type PostgresTLSConfig struct {
-	Enabled            bool   `yaml:"enabled,omitempty"`
-	CAFile             string `yaml:"ca_file,omitempty"`
-	CAData             string `yaml:"ca_data,omitempty"`
-	CertFile           string `yaml:"cert_file,omitempty"`
-	CertData           string `yaml:"cert_data,omitempty"`
-	KeyFile            string `yaml:"key_file,omitempty"`
-	KeyData            string `yaml:"key_data,omitempty"`
-	InsecureSkipVerify bool   `yaml:"insecure_skip_verify,omitempty"`
+	Enabled            bool   `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	CAFile             string `yaml:"ca_file,omitempty" json:"ca_file,omitempty"`
+	CAData             string `yaml:"ca_data,omitempty" json:"ca_data,omitempty"`
+	CertFile           string `yaml:"cert_file,omitempty" json:"cert_file,omitempty"`
+	CertData           string `yaml:"cert_data,omitempty" json:"cert_data,omitempty"`
+	KeyFile            string `yaml:"key_file,omitempty" json:"key_file,omitempty"`
+	KeyData            string `yaml:"key_data,omitempty" json:"key_data,omitempty"`
+	InsecureSkipVerify bool   `yaml:"insecure_skip_verify,omitempty" json:"insecure_skip_verify,omitempty"`
 }
 
 type PostgresGuardrails struct {
-	MaxRows            int           `yaml:"max_rows,omitempty"`
-	StatementTimeout   time.Duration `yaml:"statement_timeout,omitempty"`
-	MaxResultSizeBytes int           `yaml:"max_result_size_bytes,omitempty"`
+	MaxRows            int           `yaml:"max_rows,omitempty" json:"max_rows,omitempty"`
+	StatementTimeout   time.Duration `yaml:"statement_timeout,omitempty" json:"statement_timeout,omitempty"`
+	MaxResultSizeBytes int           `yaml:"max_result_size_bytes,omitempty" json:"max_result_size_bytes,omitempty"`
 }
 
 type Capabilities struct {
@@ -625,18 +625,6 @@ func (p PostgresConfig) Validate() error {
 		}
 		if p.Database == "" {
 			return fmt.Errorf("postgres.database is required")
-		}
-		if p.User == "" {
-			return fmt.Errorf("postgres.user is required")
-		}
-		hasClientCert := p.TLS.CertFile != "" || p.TLS.CertData != ""
-		if p.Password == "" && !hasClientCert {
-			return fmt.Errorf("postgres.password is required unless TLS client certificate authentication is configured")
-		}
-	}
-	if p.TLS.Enabled && !p.TLS.InsecureSkipVerify {
-		if p.TLS.CAFile == "" && p.TLS.CAData == "" {
-			return fmt.Errorf("postgres.tls.ca_file or postgres.tls.ca_data is required when tls is enabled")
 		}
 	}
 	if p.Guardrails.MaxRows < 0 {
