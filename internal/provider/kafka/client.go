@@ -62,13 +62,16 @@ type clientImpl struct {
 // newKafkaClient is a swappable constructor for test injection.
 var newKafkaClient = func(cfg config.KafkaConfig) *clientImpl {
 	c := &clientImpl{config: cfg}
-	c.guardrails = GuardrailPolicy{
-		MaxTopicsPerRequest:     cfg.Guardrails.MaxTopicsPerRequest,
-		MaxPartitionsPerRequest: cfg.Guardrails.MaxPartitionsPerRequest,
-		MaxConsumerGroups:       cfg.Guardrails.MaxConsumerGroups,
-		MaxRecordsPerSample:     cfg.Guardrails.MaxRecordsPerSample,
-		MaxResponseBytes:        cfg.Guardrails.MaxResponseBytes,
-		MaxQueryDuration:        cfg.Guardrails.MaxQueryDuration,
+	c.guardrails = GuardrailPolicy{}
+	if cfg.Guardrails != nil {
+		c.guardrails = GuardrailPolicy{
+			MaxTopicsPerRequest:     cfg.Guardrails.MaxTopicsPerRequest,
+			MaxPartitionsPerRequest: cfg.Guardrails.MaxPartitionsPerRequest,
+			MaxConsumerGroups:       cfg.Guardrails.MaxConsumerGroups,
+			MaxRecordsPerSample:     cfg.Guardrails.MaxRecordsPerSample,
+			MaxResponseBytes:        cfg.Guardrails.MaxResponseBytes,
+			MaxQueryDuration:        cfg.Guardrails.MaxQueryDuration,
+		}
 	}
 	c.guardrails.ApplyDefaults()
 
@@ -88,7 +91,7 @@ var newKafkaClient = func(cfg config.KafkaConfig) *clientImpl {
 		opts = append(opts, kgo.MetadataMaxAge(cfg.MetadataMaxAge))
 	}
 
-	if cfg.TLS.Enabled {
+	if cfg.TLS != nil && cfg.TLS.Enabled {
 		tlsConfig, err := buildTLSConfig(cfg.TLS)
 		if err != nil {
 			c.initErr = fmt.Errorf("build kafka tls config: %w", err)
@@ -97,7 +100,7 @@ var newKafkaClient = func(cfg config.KafkaConfig) *clientImpl {
 		opts = append(opts, kgo.DialTLSConfig(tlsConfig))
 	}
 
-	if cfg.SASL.Mechanism != "" {
+	if cfg.SASL != nil && cfg.SASL.Mechanism != "" {
 		var mechanism sasl.Mechanism
 		var err error
 		if cfg.SASL.Mechanism == "GSSAPI" {
@@ -272,7 +275,10 @@ func (c *clientImpl) RequestSharded(ctx context.Context, req kmsg.Request) []kgo
 	return c.kgoClient.RequestSharded(ctx, req)
 }
 
-func buildTLSConfig(cfg config.KafkaTLSConfig) (*tls.Config, error) {
+func buildTLSConfig(cfg *config.KafkaTLSConfig) (*tls.Config, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("tls config is nil")
+	}
 	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: cfg.Insecure}
 	if cfg.CAData != "" || cfg.CAFile != "" {
 		pemData, err := pemDataFromConfig(cfg.CAData, cfg.CAFile, "ca")
@@ -321,11 +327,14 @@ func pemDataFromConfig(encodedData, filePath, name string) ([]byte, error) {
 	return pemData, nil
 }
 
-func buildSASLMechanism(cfg config.KafkaSASLConfig) (sasl.Mechanism, error) {
+func buildSASLMechanism(cfg *config.KafkaSASLConfig) (sasl.Mechanism, error) {
 	return buildSASLMechanismWithTempFiles(cfg, nil)
 }
 
-func buildSASLMechanismWithTempFiles(cfg config.KafkaSASLConfig, tempPaths *[]string) (sasl.Mechanism, error) {
+func buildSASLMechanismWithTempFiles(cfg *config.KafkaSASLConfig, tempPaths *[]string) (sasl.Mechanism, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("sasl config is nil")
+	}
 	switch cfg.Mechanism {
 	case "PLAIN":
 		return plain.Auth{
@@ -349,7 +358,7 @@ func buildSASLMechanismWithTempFiles(cfg config.KafkaSASLConfig, tempPaths *[]st
 	}
 }
 
-func buildGSSAPIMechanism(cfg config.KafkaSASLConfig, tempPaths *[]string) (sasl.Mechanism, error) {
+func buildGSSAPIMechanism(cfg *config.KafkaSASLConfig, tempPaths *[]string) (sasl.Mechanism, error) {
 	krb5ConfPath := cfg.Krb5ConfPath
 	if cfg.Krb5ConfData != "" {
 		path, err := writeBase64TempFile(cfg.Krb5ConfData, "krb5.conf", tempPaths)

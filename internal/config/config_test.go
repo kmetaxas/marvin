@@ -484,7 +484,7 @@ func TestKafkaConfigValidate(t *testing.T) {
 			name: "valid SCRAM",
 			cfg: func() KafkaConfig {
 				cfg := base()
-				cfg.SASL = KafkaSASLConfig{Mechanism: "SCRAM-SHA-256", Username: "u", Password: "p"}
+				cfg.SASL = &KafkaSASLConfig{Mechanism: "SCRAM-SHA-256", Username: "u", Password: "p"}
 				return cfg
 			}(),
 		},
@@ -492,7 +492,7 @@ func TestKafkaConfigValidate(t *testing.T) {
 			name: "valid GSSAPI with keytab_path",
 			cfg: func() KafkaConfig {
 				cfg := base()
-				cfg.SASL = KafkaSASLConfig{
+				cfg.SASL = &KafkaSASLConfig{
 					Mechanism: "GSSAPI", Username: "alice", KerberosServiceName: "kafka",
 					KerberosRealm: "EXAMPLE.COM", KeytabPath: "/etc/alice.keytab",
 				}
@@ -503,7 +503,7 @@ func TestKafkaConfigValidate(t *testing.T) {
 			name: "valid GSSAPI with keytab_data",
 			cfg: func() KafkaConfig {
 				cfg := base()
-				cfg.SASL = KafkaSASLConfig{
+				cfg.SASL = &KafkaSASLConfig{
 					Mechanism: "GSSAPI", Username: "alice", KerberosServiceName: "kafka",
 					KerberosRealm: "EXAMPLE.COM", KeytabData: "base64data==",
 				}
@@ -514,7 +514,7 @@ func TestKafkaConfigValidate(t *testing.T) {
 			name: "GSSAPI missing keytab",
 			cfg: func() KafkaConfig {
 				cfg := base()
-				cfg.SASL = KafkaSASLConfig{
+				cfg.SASL = &KafkaSASLConfig{
 					Mechanism: "GSSAPI", Username: "alice", KerberosServiceName: "kafka",
 					KerberosRealm: "EXAMPLE.COM",
 				}
@@ -526,7 +526,7 @@ func TestKafkaConfigValidate(t *testing.T) {
 			name: "GSSAPI missing service_name",
 			cfg: func() KafkaConfig {
 				cfg := base()
-				cfg.SASL = KafkaSASLConfig{
+				cfg.SASL = &KafkaSASLConfig{
 					Mechanism: "GSSAPI", Username: "alice", KerberosRealm: "EXAMPLE.COM",
 					KeytabPath: "/etc/alice.keytab",
 				}
@@ -538,7 +538,7 @@ func TestKafkaConfigValidate(t *testing.T) {
 			name: "GSSAPI missing realm",
 			cfg: func() KafkaConfig {
 				cfg := base()
-				cfg.SASL = KafkaSASLConfig{
+				cfg.SASL = &KafkaSASLConfig{
 					Mechanism: "GSSAPI", Username: "alice", KerberosServiceName: "kafka",
 					KeytabPath: "/etc/alice.keytab",
 				}
@@ -550,7 +550,7 @@ func TestKafkaConfigValidate(t *testing.T) {
 			name: "TLS enabled missing CA",
 			cfg: func() KafkaConfig {
 				cfg := base()
-				cfg.TLS = KafkaTLSConfig{Enabled: true}
+				cfg.TLS = &KafkaTLSConfig{Enabled: true}
 				return cfg
 			}(),
 			wantErr: "kafka.tls.ca_file or kafka.tls.ca_data is required",
@@ -559,7 +559,7 @@ func TestKafkaConfigValidate(t *testing.T) {
 			name: "TLS with CA data only",
 			cfg: func() KafkaConfig {
 				cfg := base()
-				cfg.TLS = KafkaTLSConfig{Enabled: true, CAData: "base64ca=="}
+				cfg.TLS = &KafkaTLSConfig{Enabled: true, CAData: "base64ca=="}
 				return cfg
 			}(),
 		},
@@ -567,7 +567,7 @@ func TestKafkaConfigValidate(t *testing.T) {
 			name: "TLS client cert missing key",
 			cfg: func() KafkaConfig {
 				cfg := base()
-				cfg.TLS = KafkaTLSConfig{Enabled: true, CAData: "base64ca==", CertData: "base64cert=="}
+				cfg.TLS = &KafkaTLSConfig{Enabled: true, CAData: "base64ca==", CertData: "base64cert=="}
 				return cfg
 			}(),
 			wantErr: "kafka.tls client certificate requires cert_file/cert_data and key_file/key_data",
@@ -576,7 +576,7 @@ func TestKafkaConfigValidate(t *testing.T) {
 			name: "TLS valid client cert inline",
 			cfg: func() KafkaConfig {
 				cfg := base()
-				cfg.TLS = KafkaTLSConfig{Enabled: true, CAData: "base64ca==", CertData: "base64cert==", KeyData: "base64key=="}
+				cfg.TLS = &KafkaTLSConfig{Enabled: true, CAData: "base64ca==", CertData: "base64cert==", KeyData: "base64key=="}
 				return cfg
 			}(),
 		},

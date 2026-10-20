@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/invopop/jsonschema"
+	"github.com/marvin-agent/marvin/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -121,5 +123,35 @@ func TestAllProviders(t *testing.T) {
 			assert.Contains(t, capsSection, "Capability names (Resource Type list):")
 			assert.Contains(t, capsSection, fmt.Sprintf("\"%s\"", tt.expectCapability))
 		})
+	}
+}
+
+func TestKafkaSchemaRequiredFields(t *testing.T) {
+	t.Parallel()
+
+	schema := jsonschema.Reflect(config.KafkaConfig{})
+	require.NotNil(t, schema)
+	require.NotNil(t, schema.Definitions)
+
+	kafkaConfigDef := schema.Definitions["KafkaConfig"]
+	require.NotNil(t, kafkaConfigDef)
+
+	// Top-level KafkaConfig should only require BootstrapServers
+	require.NotNil(t, kafkaConfigDef.Required)
+	assert.Equal(t, []string{"BootstrapServers"}, kafkaConfigDef.Required, "KafkaConfig.required should only contain BootstrapServers")
+
+	// Nested types should have empty or no required fields
+	nestedTypes := []string{
+		"KafkaTLSConfig",
+		"KafkaSASLConfig",
+		"KafkaGuardrails",
+		"KafkaSchemaRegistryConfig",
+		"KafkaMDSConfig",
+		"KafkaConnectConfig",
+	}
+	for _, typeName := range nestedTypes {
+		def := schema.Definitions[typeName]
+		require.NotNil(t, def, "definition for %s should exist", typeName)
+		assert.Empty(t, def.Required, "%s.required should be empty", typeName)
 	}
 }

@@ -85,8 +85,8 @@ func parseKafkaConfig(_ config.KafkaConfig, cfg map[string]any) (config.KafkaCon
 		out.BootstrapServers = v
 	}
 
-	out.TLS, _ = parseKafkaTLSConfig(config.KafkaTLSConfig{}, cfg)
-	out.SASL, _ = parseKafkaSASLConfig(config.KafkaSASLConfig{}, cfg)
+	out.TLS = parseKafkaTLSConfig(cfg)
+	out.SASL = parseKafkaSASLConfig(cfg)
 
 	if d, ok := autoconfig.DurationOK(cfg, "dial_timeout"); ok {
 		out.DialTimeout = d
@@ -98,99 +98,134 @@ func parseKafkaConfig(_ config.KafkaConfig, cfg map[string]any) (config.KafkaCon
 		out.MetadataMaxAge = d
 	}
 
-	out.Guardrails, _ = parseKafkaGuardrails(config.KafkaGuardrails{}, cfg)
+	out.Guardrails = parseKafkaGuardrails(cfg)
 
 	return out, nil
 }
 
-func parseKafkaTLSConfig(_ config.KafkaTLSConfig, cfg map[string]any) (config.KafkaTLSConfig, error) {
-	out := config.KafkaTLSConfig{}
+func parseKafkaTLSConfig(cfg map[string]any) *config.KafkaTLSConfig {
+	out := &config.KafkaTLSConfig{}
+	hasAny := false
 
 	if v, ok := autoconfig.BoolOK(cfg, "tls.enabled"); ok {
 		out.Enabled = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "tls.ca_file"); ok {
 		out.CAFile = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "tls.ca_data"); ok {
 		out.CAData = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "tls.cert_file"); ok {
 		out.CertFile = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "tls.cert_data"); ok {
 		out.CertData = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "tls.key_file"); ok {
 		out.KeyFile = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "tls.key_data"); ok {
 		out.KeyData = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.BoolOK(cfg, "tls.insecure_skip_verify"); ok {
 		out.Insecure = v
+		hasAny = true
 	}
 
-	return out, nil
+	if !hasAny {
+		return nil
+	}
+	return out
 }
 
-func parseKafkaSASLConfig(_ config.KafkaSASLConfig, cfg map[string]any) (config.KafkaSASLConfig, error) {
-	out := config.KafkaSASLConfig{}
+func parseKafkaSASLConfig(cfg map[string]any) *config.KafkaSASLConfig {
+	out := &config.KafkaSASLConfig{}
+	hasAny := false
 
 	if v, ok := autoconfig.StringOK(cfg, "sasl.mechanism"); ok {
 		out.Mechanism = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "sasl.username"); ok {
 		out.Username = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "sasl.password"); ok {
 		out.Password = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "sasl.kerberos_service_name"); ok {
 		out.KerberosServiceName = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "sasl.kerberos_realm"); ok {
 		out.KerberosRealm = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "sasl.keytab_path"); ok {
 		out.KeytabPath = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "sasl.keytab_data"); ok {
 		out.KeytabData = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "sasl.krb5_conf_data"); ok {
 		out.Krb5ConfData = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.StringOK(cfg, "sasl.krb5_conf_path"); ok {
 		out.Krb5ConfPath = v
+		hasAny = true
 	}
 
-	return out, nil
+	if !hasAny {
+		return nil
+	}
+	return out
 }
 
-func parseKafkaGuardrails(_ config.KafkaGuardrails, cfg map[string]any) (config.KafkaGuardrails, error) {
-	out := config.KafkaGuardrails{}
+func parseKafkaGuardrails(cfg map[string]any) *config.KafkaGuardrails {
+	out := &config.KafkaGuardrails{}
+	hasAny := false
 
 	if v, ok := autoconfig.IntOK(cfg, "guardrails.max_topics_per_request"); ok {
 		out.MaxTopicsPerRequest = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.IntOK(cfg, "guardrails.max_partitions_per_request"); ok {
 		out.MaxPartitionsPerRequest = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.IntOK(cfg, "guardrails.max_consumer_groups"); ok {
 		out.MaxConsumerGroups = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.IntOK(cfg, "guardrails.max_records_per_sample"); ok {
 		out.MaxRecordsPerSample = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.IntOK(cfg, "guardrails.max_response_bytes"); ok {
 		out.MaxResponseBytes = v
+		hasAny = true
 	}
 	if v, ok := autoconfig.DurationOK(cfg, "guardrails.max_query_duration"); ok {
 		out.MaxQueryDuration = v
+		hasAny = true
 	}
 
-	return out, nil
+	if !hasAny {
+		return nil
+	}
+	return out
 }
 
 func NewProvider(cfg config.KafkaConfig) *Provider {

@@ -24,7 +24,7 @@ func TestBuildTLSConfigInlineCAData(t *testing.T) {
 	t.Parallel()
 
 	caPEM := testCertificatePEM(t)
-	tlsConfig, err := buildTLSConfig(config.KafkaTLSConfig{
+	tlsConfig, err := buildTLSConfig(&config.KafkaTLSConfig{
 		Enabled: true,
 		CAData:  base64.StdEncoding.EncodeToString(caPEM),
 	})
@@ -50,7 +50,7 @@ func TestBuildSASLMechanismGSSAPI(t *testing.T) {
 `)
 
 	var tempPaths []string
-	mechanism, err := buildSASLMechanismWithTempFiles(config.KafkaSASLConfig{
+	mechanism, err := buildSASLMechanismWithTempFiles(&config.KafkaSASLConfig{
 		Mechanism:           "GSSAPI",
 		Username:            "alice",
 		KerberosRealm:       "EXAMPLE.COM",

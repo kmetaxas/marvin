@@ -140,9 +140,11 @@ func TestParseKafkaConfigInlineCredentialFields(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	require.NotNil(t, cfg.TLS)
 	assert.Equal(t, "ca-pem", cfg.TLS.CAData)
 	assert.Equal(t, "cert-pem", cfg.TLS.CertData)
 	assert.Equal(t, "key-pem", cfg.TLS.KeyData)
+	require.NotNil(t, cfg.SASL)
 	assert.Equal(t, "keytab-bytes", cfg.SASL.KeytabData)
 	assert.Equal(t, "krb5-data", cfg.SASL.Krb5ConfData)
 	assert.Equal(t, "/custom/krb5.conf", cfg.SASL.Krb5ConfPath)
@@ -163,9 +165,11 @@ func TestParseKafkaConfigInlineCredentialDotFields(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	require.NotNil(t, cfg.TLS)
 	assert.Equal(t, "ca-pem", cfg.TLS.CAData)
 	assert.Equal(t, "cert-pem", cfg.TLS.CertData)
 	assert.Equal(t, "key-pem", cfg.TLS.KeyData)
+	require.NotNil(t, cfg.SASL)
 	assert.Equal(t, "keytab-bytes", cfg.SASL.KeytabData)
 	assert.Equal(t, "krb5-data", cfg.SASL.Krb5ConfData)
 	assert.Equal(t, "/custom/krb5.conf", cfg.SASL.Krb5ConfPath)

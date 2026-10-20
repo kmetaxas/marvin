@@ -70,71 +70,71 @@ type KubernetesConfig struct {
 }
 
 type KafkaConfig struct {
-	BootstrapServers []string                  `yaml:"bootstrap_servers"`
-	TLS              KafkaTLSConfig            `yaml:"tls,omitempty"`
-	SASL             KafkaSASLConfig           `yaml:"sasl,omitempty"`
-	DialTimeout      time.Duration             `yaml:"dial_timeout,omitempty"`
-	RequestTimeout   time.Duration             `yaml:"request_timeout,omitempty"`
-	MetadataMaxAge   time.Duration             `yaml:"metadata_max_age,omitempty"`
-	Guardrails       KafkaGuardrails           `yaml:"guardrails,omitempty"`
-	SchemaRegistry   KafkaSchemaRegistryConfig `yaml:"schema_registry,omitempty"`
-	MDS              KafkaMDSConfig            `yaml:"mds,omitempty"`
-	Connect          KafkaConnectConfig        `yaml:"connect,omitempty"`
+	BootstrapServers []string                   `yaml:"bootstrap_servers" json:"BootstrapServers"`
+	TLS              *KafkaTLSConfig            `yaml:"tls,omitempty" json:"TLS,omitempty"`
+	SASL             *KafkaSASLConfig           `yaml:"sasl,omitempty" json:"SASL,omitempty"`
+	DialTimeout      time.Duration              `yaml:"dial_timeout,omitempty" json:"DialTimeout,omitempty"`
+	RequestTimeout   time.Duration              `yaml:"request_timeout,omitempty" json:"RequestTimeout,omitempty"`
+	MetadataMaxAge   time.Duration              `yaml:"metadata_max_age,omitempty" json:"MetadataMaxAge,omitempty"`
+	Guardrails       *KafkaGuardrails           `yaml:"guardrails,omitempty" json:"Guardrails,omitempty"`
+	SchemaRegistry   *KafkaSchemaRegistryConfig `yaml:"schema_registry,omitempty" json:"SchemaRegistry,omitempty"`
+	MDS              *KafkaMDSConfig            `yaml:"mds,omitempty" json:"MDS,omitempty"`
+	Connect          *KafkaConnectConfig        `yaml:"connect,omitempty" json:"Connect,omitempty"`
 }
 
 type KafkaTLSConfig struct {
-	Enabled  bool   `yaml:"enabled,omitempty"`
-	CAFile   string `yaml:"ca_file,omitempty"`
-	CAData   string `yaml:"ca_data,omitempty"`
-	CertFile string `yaml:"cert_file,omitempty"`
-	CertData string `yaml:"cert_data,omitempty"`
-	KeyFile  string `yaml:"key_file,omitempty"`
-	KeyData  string `yaml:"key_data,omitempty"`
-	Insecure bool   `yaml:"insecure_skip_verify,omitempty"`
+	Enabled  bool   `yaml:"enabled,omitempty" json:"Enabled,omitempty"`
+	CAFile   string `yaml:"ca_file,omitempty" json:"CAFile,omitempty"`
+	CAData   string `yaml:"ca_data,omitempty" json:"CAData,omitempty"`
+	CertFile string `yaml:"cert_file,omitempty" json:"CertFile,omitempty"`
+	CertData string `yaml:"cert_data,omitempty" json:"CertData,omitempty"`
+	KeyFile  string `yaml:"key_file,omitempty" json:"KeyFile,omitempty"`
+	KeyData  string `yaml:"key_data,omitempty" json:"KeyData,omitempty"`
+	Insecure bool   `yaml:"insecure_skip_verify,omitempty" json:"Insecure,omitempty"`
 }
 
 type KafkaSASLConfig struct {
-	Mechanism           string `yaml:"mechanism,omitempty"`
-	Username            string `yaml:"username,omitempty"`
-	Password            string `yaml:"password,omitempty"`
-	KerberosServiceName string `yaml:"kerberos_service_name,omitempty"`
-	KerberosRealm       string `yaml:"kerberos_realm,omitempty"`
-	KeytabPath          string `yaml:"keytab_path,omitempty"`
-	KeytabData          string `yaml:"keytab_data,omitempty"`
-	Krb5ConfData        string `yaml:"krb5_conf_data,omitempty"`
-	Krb5ConfPath        string `yaml:"krb5_conf_path,omitempty"`
+	Mechanism           string `yaml:"mechanism,omitempty" json:"Mechanism,omitempty"`
+	Username            string `yaml:"username,omitempty" json:"Username,omitempty"`
+	Password            string `yaml:"password,omitempty" json:"Password,omitempty"`
+	KerberosServiceName string `yaml:"kerberos_service_name,omitempty" json:"KerberosServiceName,omitempty"`
+	KerberosRealm       string `yaml:"kerberos_realm,omitempty" json:"KerberosRealm,omitempty"`
+	KeytabPath          string `yaml:"keytab_path,omitempty" json:"KeytabPath,omitempty"`
+	KeytabData          string `yaml:"keytab_data,omitempty" json:"KeytabData,omitempty"`
+	Krb5ConfData        string `yaml:"krb5_conf_data,omitempty" json:"Krb5ConfData,omitempty"`
+	Krb5ConfPath        string `yaml:"krb5_conf_path,omitempty" json:"Krb5ConfPath,omitempty"`
 }
 
 type KafkaGuardrails struct {
-	MaxTopicsPerRequest     int           `yaml:"max_topics_per_request,omitempty"`
-	MaxPartitionsPerRequest int           `yaml:"max_partitions_per_request,omitempty"`
-	MaxConsumerGroups       int           `yaml:"max_consumer_groups,omitempty"`
-	MaxRecordsPerSample     int           `yaml:"max_records_per_sample,omitempty"`
-	MaxResponseBytes        int           `yaml:"max_response_bytes,omitempty"`
-	MaxQueryDuration        time.Duration `yaml:"max_query_duration,omitempty"`
+	MaxTopicsPerRequest     int           `yaml:"max_topics_per_request,omitempty" json:"MaxTopicsPerRequest,omitempty"`
+	MaxPartitionsPerRequest int           `yaml:"max_partitions_per_request,omitempty" json:"MaxPartitionsPerRequest,omitempty"`
+	MaxConsumerGroups       int           `yaml:"max_consumer_groups,omitempty" json:"MaxConsumerGroups,omitempty"`
+	MaxRecordsPerSample     int           `yaml:"max_records_per_sample,omitempty" json:"MaxRecordsPerSample,omitempty"`
+	MaxResponseBytes        int           `yaml:"max_response_bytes,omitempty" json:"MaxResponseBytes,omitempty"`
+	MaxQueryDuration        time.Duration `yaml:"max_query_duration,omitempty" json:"MaxQueryDuration,omitempty"`
 }
 
 type KafkaSchemaRegistryConfig struct {
-	URL  string          `yaml:"url,omitempty"`
-	TLS  KafkaTLSConfig  `yaml:"tls,omitempty"`
-	Auth KafkaSASLConfig `yaml:"auth,omitempty"`
+	URL  string           `yaml:"url,omitempty" json:"URL,omitempty"`
+	TLS  *KafkaTLSConfig  `yaml:"tls,omitempty" json:"TLS,omitempty"`
+	Auth *KafkaSASLConfig `yaml:"auth,omitempty" json:"Auth,omitempty"`
 }
 
 type KafkaMDSConfig struct {
-	URL  string          `yaml:"url,omitempty"`
-	TLS  KafkaTLSConfig  `yaml:"tls,omitempty"`
-	Auth KafkaSASLConfig `yaml:"auth,omitempty"`
+	URL  string           `yaml:"url,omitempty" json:"URL,omitempty"`
+	TLS  *KafkaTLSConfig  `yaml:"tls,omitempty" json:"TLS,omitempty"`
+	Auth *KafkaSASLConfig `yaml:"auth,omitempty" json:"Auth,omitempty"`
 }
 
 type KafkaConnectConfig struct {
-	Clusters []KafkaConnectClusterConfig `yaml:"clusters,omitempty"`
+	Clusters []KafkaConnectClusterConfig `yaml:"clusters,omitempty" json:"Clusters,omitempty"`
 }
 
 type KafkaConnectClusterConfig struct {
-	Name string          `yaml:"name"`
-	URL  string          `yaml:"url"`
-	TLS  KafkaTLSConfig  `yaml:"tls,omitempty"`
-	Auth KafkaSASLConfig `yaml:"auth,omitempty"`
+	Name string           `yaml:"name" json:"Name,omitempty"`
+	URL  string           `yaml:"url" json:"URL,omitempty"`
+	TLS  *KafkaTLSConfig  `yaml:"tls,omitempty" json:"TLS,omitempty"`
+	Auth *KafkaSASLConfig `yaml:"auth,omitempty" json:"Auth,omitempty"`
 }
 
 type AzureConfig struct {
@@ -513,7 +513,7 @@ func (k KafkaConfig) Validate() error {
 			return fmt.Errorf("kafka.bootstrap_servers: invalid address %q", s)
 		}
 	}
-	if k.SASL.Mechanism != "" {
+	if k.SASL != nil && k.SASL.Mechanism != "" {
 		valid := map[string]bool{
 			"PLAIN": true, "SCRAM-SHA-256": true, "SCRAM-SHA-512": true, "GSSAPI": true,
 		}
@@ -532,7 +532,7 @@ func (k KafkaConfig) Validate() error {
 			}
 		}
 	}
-	if k.TLS.Enabled {
+	if k.TLS != nil && k.TLS.Enabled {
 		if k.TLS.CAFile == "" && k.TLS.CAData == "" && !k.TLS.Insecure {
 			return fmt.Errorf("kafka.tls.ca_file or kafka.tls.ca_data is required when tls is enabled")
 		}
@@ -541,12 +541,12 @@ func (k KafkaConfig) Validate() error {
 			return fmt.Errorf("kafka.tls client certificate requires cert_file/cert_data and key_file/key_data")
 		}
 	}
-	if k.SchemaRegistry.URL != "" {
+	if k.SchemaRegistry != nil && k.SchemaRegistry.URL != "" {
 		if _, err := url.Parse(k.SchemaRegistry.URL); err != nil {
 			return fmt.Errorf("kafka.schema_registry.url: %w", err)
 		}
 	}
-	if k.MDS.URL != "" {
+	if k.MDS != nil && k.MDS.URL != "" {
 		if _, err := url.Parse(k.MDS.URL); err != nil {
 			return fmt.Errorf("kafka.mds.url: %w", err)
 		}
