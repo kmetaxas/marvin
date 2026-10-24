@@ -86,6 +86,30 @@ func TestProviderIsConfigured(t *testing.T) {
 	assert.False(t, p2.IsConfigured())
 }
 
+func TestProviderUpdateConfigPreservesBaseConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.GraylogConfig{
+		URL:     "https://graylog.example.com:9000/api",
+		Timeout: 30,
+		Auth: config.GraylogAuthConfig{
+			Type:  "basic",
+			Token: "secret-token",
+		},
+		Guardrails: config.GraylogGuardrails{
+			MaxResults: 1000,
+		},
+	}
+	p := NewProvider(cfg)
+	require.True(t, p.IsConfigured(), "provider should be configured initially")
+
+	p.UpdateConfig("", map[string]any{})
+	require.True(t, p.IsConfigured(), "provider should still be configured after empty update")
+	assert.Equal(t, "https://graylog.example.com:9000/api", p.state.Config().URL)
+	assert.Equal(t, "secret-token", p.state.Config().Auth.Token)
+	assert.Equal(t, 1000, p.state.Config().Guardrails.MaxResults)
+}
+
 // Ensure all tasks satisfy the task.Task interface at compile time.
 var _ task.Task = (*searchTask)(nil)
 var _ task.Task = (*countTask)(nil)

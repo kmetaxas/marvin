@@ -70,6 +70,7 @@ func run() error {
 	log.Debug("authenticator built", "method", auth.Method())
 
 	reg := registry.New()
+	reg.SetLogger(log)
 	enabledConfig := map[string]any{"enabled": cfg.Capabilities.Enabled}
 	for _, p := range exampleProviders(*cfg) {
 		if err := reg.RegisterProvider(p, enabledConfig); err != nil {

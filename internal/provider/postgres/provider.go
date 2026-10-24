@@ -140,8 +140,8 @@ func (p *Provider) UpdateConfig(capabilityName string, cfg map[string]any) {
 	})
 }
 
-func parsePostgresConfigMap(_ config.PostgresConfig, cfg map[string]any) (config.PostgresConfig, error) {
-	out := config.PostgresConfig{}
+func parsePostgresConfigMap(base config.PostgresConfig, cfg map[string]any) (config.PostgresConfig, error) {
+	out := base
 
 	if v, ok := autoconfig.StringOK(cfg, "host"); ok {
 		out.Host = v
@@ -174,14 +174,18 @@ func parsePostgresConfigMap(_ config.PostgresConfig, cfg map[string]any) (config
 		out.ConnMaxLifetime = d
 	}
 
-	out.TLS, _ = parsePostgresTLSConfig(config.PostgresTLSConfig{}, cfg)
-	out.Guardrails, _ = parsePostgresGuardrails(config.PostgresGuardrails{}, cfg)
+	if autoconfig.HasPrefix(cfg, "tls") {
+		out.TLS, _ = parsePostgresTLSConfig(base.TLS, cfg)
+	}
+	if autoconfig.HasPrefix(cfg, "guardrails") {
+		out.Guardrails, _ = parsePostgresGuardrails(base.Guardrails, cfg)
+	}
 
 	return out, nil
 }
 
-func parsePostgresTLSConfig(_ config.PostgresTLSConfig, cfg map[string]any) (config.PostgresTLSConfig, error) {
-	out := config.PostgresTLSConfig{}
+func parsePostgresTLSConfig(base config.PostgresTLSConfig, cfg map[string]any) (config.PostgresTLSConfig, error) {
+	out := base
 
 	if v, ok := autoconfig.BoolOK(cfg, "tls.enabled"); ok {
 		out.Enabled = v
@@ -211,8 +215,8 @@ func parsePostgresTLSConfig(_ config.PostgresTLSConfig, cfg map[string]any) (con
 	return out, nil
 }
 
-func parsePostgresGuardrails(_ config.PostgresGuardrails, cfg map[string]any) (config.PostgresGuardrails, error) {
-	out := config.PostgresGuardrails{}
+func parsePostgresGuardrails(base config.PostgresGuardrails, cfg map[string]any) (config.PostgresGuardrails, error) {
+	out := base
 
 	if v, ok := autoconfig.IntOK(cfg, "guardrails.max_rows"); ok {
 		out.MaxRows = v

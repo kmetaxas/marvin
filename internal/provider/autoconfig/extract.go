@@ -33,6 +33,21 @@ func Lookup(raw map[string]any, key string) (any, bool) {
 	return cur, true
 }
 
+// HasPrefix returns true if raw contains any key equal to prefix or starting
+// with prefix + ".". It is useful for deciding whether to replace a nested
+// config section when parsing incremental updates.
+func HasPrefix(raw map[string]any, prefix string) bool {
+	if raw == nil {
+		return false
+	}
+	for k := range raw {
+		if k == prefix || strings.HasPrefix(k, prefix+".") {
+			return true
+		}
+	}
+	return false
+}
+
 func String(raw map[string]any, key string) string {
 	v, _ := StringOK(raw, key)
 	return v
