@@ -1,7 +1,7 @@
 .PHONY all: build test vet
 
 build:
-	go build ./cmd/marvin
+	CGO_ENABLED=0 go build ./cmd/marvin
 test:
 	go test -v ./...
 vet:

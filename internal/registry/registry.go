@@ -2,6 +2,7 @@ package registry
 
 import (
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"sync"
@@ -22,6 +23,7 @@ type Registry struct {
 	tasks           map[string]task.Task
 	enabledPatterns []string
 	onChanged       OnCapabilitiesChanged
+	logger          *slog.Logger
 }
 
 func New() *Registry {
@@ -36,6 +38,19 @@ func (r *Registry) SetOnCapabilitiesChanged(fn OnCapabilitiesChanged) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.onChanged = fn
+}
+
+func (r *Registry) SetLogger(logger *slog.Logger) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.logger = logger
+}
+
+func (r *Registry) log() *slog.Logger {
+	if r.logger != nil {
+		return r.logger
+	}
+	return slog.Default()
 }
 
 func (r *Registry) RegisterProvider(p provider.Provider, cfg map[string]any) error {
@@ -233,6 +248,7 @@ func (r *Registry) ApplyOnlineConfig(upd *marvinpb.UpdateConfig) {
 
 		if isConfigured {
 			// Provider became configured: add its capabilities.
+			r.log().Info("provider became configured, adding capabilities", "provider", p.Name(), "capability_count", len(p.Capabilities()))
 			for _, cap := range p.Capabilities() {
 				if cap.Provider == "" {
 					cap.Provider = p.Name()
@@ -244,6 +260,7 @@ func (r *Registry) ApplyOnlineConfig(upd *marvinpb.UpdateConfig) {
 			}
 		} else {
 			// Provider became unconfigured: remove its capabilities.
+			r.log().Warn("provider became unconfigured, removing capabilities", "provider", p.Name(), "capability_count", len(p.Capabilities()))
 			for _, cap := range p.Capabilities() {
 				delete(r.capabilities, cap.Name)
 				delete(r.tasks, cap.Name)

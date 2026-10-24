@@ -76,8 +76,8 @@ func (p *Provider) UpdateConfig(capabilityName string, cfg map[string]any) {
 	})
 }
 
-func parseGraylogConfig(_ config.GraylogConfig, cfg map[string]any) (config.GraylogConfig, error) {
-	out := config.GraylogConfig{}
+func parseGraylogConfig(base config.GraylogConfig, cfg map[string]any) (config.GraylogConfig, error) {
+	out := base
 
 	if u, ok := autoconfig.StringOK(cfg, "url"); ok {
 		out.URL = u
@@ -86,14 +86,18 @@ func parseGraylogConfig(_ config.GraylogConfig, cfg map[string]any) (config.Gray
 		out.Timeout = d
 	}
 
-	out.Auth, _ = parseGraylogAuthConfig(config.GraylogAuthConfig{}, cfg)
-	out.Guardrails, _ = parseGraylogGuardrails(config.GraylogGuardrails{}, cfg)
+	if autoconfig.HasPrefix(cfg, "auth") {
+		out.Auth, _ = parseGraylogAuthConfig(base.Auth, cfg)
+	}
+	if autoconfig.HasPrefix(cfg, "guardrails") {
+		out.Guardrails, _ = parseGraylogGuardrails(base.Guardrails, cfg)
+	}
 
 	return out, nil
 }
 
-func parseGraylogAuthConfig(_ config.GraylogAuthConfig, cfg map[string]any) (config.GraylogAuthConfig, error) {
-	out := config.GraylogAuthConfig{}
+func parseGraylogAuthConfig(base config.GraylogAuthConfig, cfg map[string]any) (config.GraylogAuthConfig, error) {
+	out := base
 
 	if v, ok := autoconfig.StringOK(cfg, "auth.type"); ok {
 		out.Type = v
@@ -111,8 +115,8 @@ func parseGraylogAuthConfig(_ config.GraylogAuthConfig, cfg map[string]any) (con
 	return out, nil
 }
 
-func parseGraylogGuardrails(_ config.GraylogGuardrails, cfg map[string]any) (config.GraylogGuardrails, error) {
-	out := config.GraylogGuardrails{}
+func parseGraylogGuardrails(base config.GraylogGuardrails, cfg map[string]any) (config.GraylogGuardrails, error) {
+	out := base
 
 	if d, ok := autoconfig.DurationOK(cfg, "guardrails.max_query_range"); ok {
 		out.MaxQueryRange = d

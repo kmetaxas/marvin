@@ -99,6 +99,32 @@ func TestProviderUpdateConfigRecreatesClient(t *testing.T) {
 	require.Equal(t, 3, created)
 }
 
+func TestProviderUpdateConfigPreservesBaseConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.PrometheusConfig{
+		URL:     "http://prometheus:9090",
+		Timeout: 30,
+		Auth: config.PrometheusAuthConfig{
+			Type:     "bearer",
+			Token:    "secret-token",
+			Username: "admin",
+		},
+		Guardrails: config.PrometheusGuardrails{
+			MaxReturnedSeries: 1000,
+			MaxResponseBytes:  1024,
+		},
+	}
+	p := NewProvider(cfg)
+	require.True(t, p.IsConfigured(), "provider should be configured initially")
+
+	p.UpdateConfig("", map[string]any{})
+	require.True(t, p.IsConfigured(), "provider should still be configured after empty update")
+	assert.Equal(t, "http://prometheus:9090", p.state.Config().URL)
+	assert.Equal(t, "secret-token", p.state.Config().Auth.Token)
+	assert.Equal(t, 1000, p.state.Config().Guardrails.MaxReturnedSeries)
+}
+
 var _ task.Task = (*queryInstantTask)(nil)
 var _ task.Task = (*queryRangeTask)(nil)
 var _ task.Task = (*seriesListTask)(nil)

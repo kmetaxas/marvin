@@ -82,8 +82,8 @@ func (p *Provider) UpdateConfig(capabilityName string, cfg map[string]any) {
 	})
 }
 
-func parsePrometheusConfig(_ config.PrometheusConfig, cfg map[string]any) (config.PrometheusConfig, error) {
-	out := config.PrometheusConfig{}
+func parsePrometheusConfig(base config.PrometheusConfig, cfg map[string]any) (config.PrometheusConfig, error) {
+	out := base
 
 	if u, ok := autoconfig.StringOK(cfg, "url"); ok {
 		out.URL = u
@@ -92,14 +92,18 @@ func parsePrometheusConfig(_ config.PrometheusConfig, cfg map[string]any) (confi
 		out.Timeout = d
 	}
 
-	out.Auth, _ = parsePrometheusAuthConfig(config.PrometheusAuthConfig{}, cfg)
-	out.Guardrails, _ = parsePrometheusGuardrails(config.PrometheusGuardrails{}, cfg)
+	if autoconfig.HasPrefix(cfg, "auth") {
+		out.Auth, _ = parsePrometheusAuthConfig(base.Auth, cfg)
+	}
+	if autoconfig.HasPrefix(cfg, "guardrails") {
+		out.Guardrails, _ = parsePrometheusGuardrails(base.Guardrails, cfg)
+	}
 
 	return out, nil
 }
 
-func parsePrometheusAuthConfig(_ config.PrometheusAuthConfig, cfg map[string]any) (config.PrometheusAuthConfig, error) {
-	out := config.PrometheusAuthConfig{}
+func parsePrometheusAuthConfig(base config.PrometheusAuthConfig, cfg map[string]any) (config.PrometheusAuthConfig, error) {
+	out := base
 
 	if v, ok := autoconfig.StringOK(cfg, "auth.type"); ok {
 		out.Type = v
@@ -123,8 +127,8 @@ func parsePrometheusAuthConfig(_ config.PrometheusAuthConfig, cfg map[string]any
 	return out, nil
 }
 
-func parsePrometheusGuardrails(_ config.PrometheusGuardrails, cfg map[string]any) (config.PrometheusGuardrails, error) {
-	out := config.PrometheusGuardrails{}
+func parsePrometheusGuardrails(base config.PrometheusGuardrails, cfg map[string]any) (config.PrometheusGuardrails, error) {
+	out := base
 
 	if d, ok := autoconfig.DurationOK(cfg, "guardrails.max_query_range"); ok {
 		out.MaxQueryRange = d

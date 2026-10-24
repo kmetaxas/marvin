@@ -155,6 +155,33 @@ func TestParsePostgresConfigMapDotFields(t *testing.T) {
 	assert.Equal(t, 500, cfg.Guardrails.MaxRows)
 }
 
+func TestProviderUpdateConfigPreservesBaseConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.PostgresConfig{
+		Host:     "localhost",
+		Port:     5432,
+		Database: "mydb",
+		User:     "myuser",
+		Password: "mypass",
+		TLS: config.PostgresTLSConfig{
+			Enabled: true,
+			CAFile:  "/ca.crt",
+		},
+		Guardrails: config.PostgresGuardrails{
+			MaxRows: 1000,
+		},
+	}
+	p := NewProvider(cfg)
+	require.True(t, p.IsConfigured(), "provider should be configured initially")
+
+	p.UpdateConfig("", map[string]any{})
+	require.True(t, p.IsConfigured(), "provider should still be configured after empty update")
+	assert.Equal(t, "localhost", p.state.Config().Host)
+	assert.Equal(t, "/ca.crt", p.state.Config().TLS.CAFile)
+	assert.Equal(t, 1000, p.state.Config().Guardrails.MaxRows)
+}
+
 func TestProviderTasksImplementTask(t *testing.T) {
 	t.Parallel()
 	var _ task.Task = (*connectionPingTask)(nil)

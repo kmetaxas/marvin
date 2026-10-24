@@ -78,15 +78,19 @@ func (p *Provider) UpdateConfig(capabilityName string, cfg map[string]any) {
 	})
 }
 
-func parseKafkaConfig(_ config.KafkaConfig, cfg map[string]any) (config.KafkaConfig, error) {
-	out := config.KafkaConfig{}
+func parseKafkaConfig(base config.KafkaConfig, cfg map[string]any) (config.KafkaConfig, error) {
+	out := base
 
 	if v, ok := autoconfig.StringSliceOK(cfg, "bootstrap_servers"); ok {
 		out.BootstrapServers = v
 	}
 
-	out.TLS = parseKafkaTLSConfig(cfg)
-	out.SASL = parseKafkaSASLConfig(cfg)
+	if autoconfig.HasPrefix(cfg, "tls") {
+		out.TLS = parseKafkaTLSConfig(cfg)
+	}
+	if autoconfig.HasPrefix(cfg, "sasl") {
+		out.SASL = parseKafkaSASLConfig(cfg)
+	}
 
 	if d, ok := autoconfig.DurationOK(cfg, "dial_timeout"); ok {
 		out.DialTimeout = d
@@ -98,7 +102,9 @@ func parseKafkaConfig(_ config.KafkaConfig, cfg map[string]any) (config.KafkaCon
 		out.MetadataMaxAge = d
 	}
 
-	out.Guardrails = parseKafkaGuardrails(cfg)
+	if autoconfig.HasPrefix(cfg, "guardrails") {
+		out.Guardrails = parseKafkaGuardrails(cfg)
+	}
 
 	return out, nil
 }

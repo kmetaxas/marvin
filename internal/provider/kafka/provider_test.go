@@ -224,3 +224,34 @@ func TestProviderTasksWiredToProvider(t *testing.T) {
 	task := tk.(*topicListTask)
 	assert.Equal(t, p, task.provider)
 }
+
+func TestProviderUpdateConfigPreservesBaseConfig(t *testing.T) {
+	t.Parallel()
+
+	// Start with a fully populated config.
+	cfg := config.KafkaConfig{
+		BootstrapServers: []string{"localhost:9092"},
+		DialTimeout:      5 * time.Second,
+		RequestTimeout:   10 * time.Second,
+		TLS: &config.KafkaTLSConfig{
+			Enabled: true,
+			CAFile:  "/ca.crt",
+		},
+		SASL: &config.KafkaSASLConfig{
+			Mechanism: "SCRAM-SHA-256",
+			Username:  "user",
+		},
+		Guardrails: &config.KafkaGuardrails{
+			MaxTopicsPerRequest: 50,
+		},
+	}
+	p := NewProvider(cfg)
+	require.True(t, p.IsConfigured(), "provider should be configured initially")
+
+	// Update with an empty map — this simulates a control-plane config update
+	// that doesn't include Kafka fields. The base config must be preserved.
+	p.UpdateConfig("", map[string]any{})
+
+	require.True(t, p.IsConfigured(), "provider should still be configured after empty update")
+	require.NotNil(t, p.CurrentClient(), "client should still exist after empty update")
+}
