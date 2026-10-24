@@ -127,6 +127,9 @@ func parsePostgresConfig(cfg config.PostgresConfig) (*pgxpool.Config, error) {
 		}
 		connString = fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
 			cfg.User, cfg.Password, host, port, cfg.Database)
+		if !cfg.TLS.Enabled {
+			connString += "?sslmode=disable"
+		}
 	}
 
 	poolCfg, err := pgxpool.ParseConfig(connString)
