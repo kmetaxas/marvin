@@ -24,7 +24,6 @@ func (fakeCredential) GetToken(context.Context, policy.TokenRequestOptions) (azc
 }
 
 func TestCreateAzureCredentialUsesClientSecret(t *testing.T) {
-	t.Parallel()
 	clientInitMu.Lock()
 	defer clientInitMu.Unlock()
 
@@ -57,7 +56,6 @@ func TestCreateAzureCredentialUsesClientSecret(t *testing.T) {
 }
 
 func TestCreateAzureCredentialFallsBackToDefault(t *testing.T) {
-	t.Parallel()
 	clientInitMu.Lock()
 	defer clientInitMu.Unlock()
 
@@ -84,7 +82,6 @@ func TestCreateAzureCredentialFallsBackToDefault(t *testing.T) {
 }
 
 func TestNewAzureClientsCapturesInitializationError(t *testing.T) {
-	t.Parallel()
 	clientInitMu.Lock()
 	defer clientInitMu.Unlock()
 

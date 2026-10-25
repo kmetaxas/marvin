@@ -12,7 +12,6 @@ import (
 )
 
 func TestNewK8sClientCapturesInitializationError(t *testing.T) {
-	t.Parallel()
 
 	orig := newRESTConfig
 	newRESTConfig = func(_ config.KubernetesConfig) (*rest.Config, error) {
@@ -27,7 +26,6 @@ func TestNewK8sClientCapturesInitializationError(t *testing.T) {
 }
 
 func TestNewK8sClientCapturesClientsetError(t *testing.T) {
-	t.Parallel()
 
 	origRest := newRESTConfig
 	origClientset := newKubernetesClientset

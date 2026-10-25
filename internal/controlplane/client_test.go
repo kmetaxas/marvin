@@ -38,8 +38,6 @@ func (s stubTaskExecutor) Execute(ctx context.Context, capabilityName string, pa
 }
 
 func TestClientRegisterHeartbeatExecuteAndUpdateConfig(t *testing.T) {
-	t.Parallel()
-
 	updateCh := make(chan *marvinpb.UpdateConfig, 1)
 	var mock *mockControlPlaneServer
 	server, listener, mock := newMockGRPCServer(t, func(stream marvinpb.MarvinService_ConnectServer) error {
@@ -161,8 +159,6 @@ func TestClientRegisterHeartbeatExecuteAndUpdateConfig(t *testing.T) {
 }
 
 func TestClientReconnectsAfterTemporaryRegistrationRejection(t *testing.T) {
-	t.Parallel()
-
 	var mock *mockControlPlaneServer
 	server, listener, mock := newMockGRPCServer(
 		t,
@@ -215,8 +211,6 @@ func TestClientReconnectsAfterTemporaryRegistrationRejection(t *testing.T) {
 }
 
 func TestClientPermanentRegistrationRejectionFails(t *testing.T) {
-	t.Parallel()
-
 	var mock *mockControlPlaneServer
 	server, listener, mock := newMockGRPCServer(t, func(stream marvinpb.MarvinService_ConnectServer) error {
 		msg, err := mock.recvAgentMessage(stream)
@@ -269,8 +263,6 @@ func TestSecretKeyAuthenticatorValidation(t *testing.T) {
 }
 
 func TestClientAppliesEffectiveConfigOnRegistration(t *testing.T) {
-	t.Parallel()
-
 	var mock *mockControlPlaneServer
 	updateCh := make(chan *marvinpb.UpdateConfig, 1)
 	server, listener, mock := newMockGRPCServer(t, func(stream marvinpb.MarvinService_ConnectServer) error {
@@ -325,8 +317,6 @@ func TestClientAppliesEffectiveConfigOnRegistration(t *testing.T) {
 }
 
 func TestClientVersionGatingIgnoresStaleUpdateConfig(t *testing.T) {
-	t.Parallel()
-
 	var mock *mockControlPlaneServer
 	updateCh := make(chan *marvinpb.UpdateConfig, 2)
 	server, listener, mock := newMockGRPCServer(t, func(stream marvinpb.MarvinService_ConnectServer) error {
@@ -450,8 +440,6 @@ func stubBufDialer(t *testing.T, listener *bufconn.Listener) func() {
 }
 
 func TestClientUpdateConfigHandlerDoesNotDeadlock(t *testing.T) {
-	t.Parallel()
-
 	updateCh := make(chan struct{}, 1)
 	var mock *mockControlPlaneServer
 	server, listener, mock := newMockGRPCServer(t, func(stream marvinpb.MarvinService_ConnectServer) error {
@@ -517,8 +505,6 @@ func TestClientUpdateConfigHandlerDoesNotDeadlock(t *testing.T) {
 }
 
 func TestConcurrencySemaphoreBlocksAndFanoutMetadata(t *testing.T) {
-	t.Parallel()
-
 	var mock *mockControlPlaneServer
 	enteredCh := make(chan struct{}, 2)
 	finishCh := make(chan struct{})

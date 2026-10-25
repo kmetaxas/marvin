@@ -13,7 +13,6 @@ import (
 var _ provider.Provider = provider.BaseProvider{}
 
 func TestProviderCurrentClient(t *testing.T) {
-	t.Parallel()
 
 	p := NewProvider(config.KubernetesConfig{})
 	require.NotNil(t, p)
@@ -23,7 +22,6 @@ func TestProviderCurrentClient(t *testing.T) {
 }
 
 func TestProviderUpdateConfig(t *testing.T) {
-	t.Parallel()
 
 	p := NewProvider(config.KubernetesConfig{})
 	require.NotNil(t, p)
@@ -55,7 +53,6 @@ func TestProviderUpdateConfig(t *testing.T) {
 }
 
 func TestNewProviderWiresAllCapabilities(t *testing.T) {
-	t.Parallel()
 
 	p := NewProvider(config.KubernetesConfig{})
 	require.NotNil(t, p)

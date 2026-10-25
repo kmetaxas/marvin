@@ -3,6 +3,7 @@ package autoconfig
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 
 type testClient struct {
 	id     string
-	closed bool
+	closed atomic.Bool
 }
 
 type testConfig struct {
@@ -52,7 +53,7 @@ func TestApplyChangeBuildClose(t *testing.T) {
 		Build: func(cfg testConfig) (*testClient, error) {
 			return &testClient{id: cfg.Value}, nil
 		},
-		Close: func(client *testClient) { client.closed = true },
+		Close: func(client *testClient) { client.closed.Store(true) },
 		OnChanged: func(oldCfg, newCfg testConfig, hookRecreated bool) {
 			changedHookCalled = true
 			assert.Equal(t, "old", oldCfg.Value)
@@ -68,8 +69,8 @@ func TestApplyChangeBuildClose(t *testing.T) {
 	assert.Equal(t, testConfig{Value: "new"}, state.Config())
 	assert.Equal(t, "new", state.Client().id)
 	// Close is deferred by a grace period so in-flight requests can finish.
-	assert.False(t, oldClient.closed, "client should not be closed immediately after Apply")
-	require.Eventually(t, func() bool { return oldClient.closed }, 10*time.Second, 10*time.Millisecond, "client should eventually be closed after grace period")
+	assert.False(t, oldClient.closed.Load(), "client should not be closed immediately after Apply")
+	require.Eventually(t, func() bool { return oldClient.closed.Load() }, 10*time.Second, 10*time.Millisecond, "client should eventually be closed after grace period")
 }
 
 func TestApplyBuildError(t *testing.T) {
@@ -109,13 +110,13 @@ func TestApplySelectiveRecreate(t *testing.T) {
 			t.Fatal("build should not run")
 			return nil, nil
 		},
-		Close: func(client *testClient) { client.closed = true },
+		Close: func(client *testClient) { client.closed.Store(true) },
 	})
 
 	require.NoError(t, err)
 	assert.True(t, changed)
 	assert.False(t, recreated)
-	assert.False(t, oldClient.closed)
+	assert.False(t, oldClient.closed.Load())
 	assert.Same(t, oldClient, state.Client())
 	assert.Equal(t, testConfig{Value: "new", RuntimeVersion: "v1"}, state.Config())
 }
@@ -141,7 +142,7 @@ func TestApplyLockTimeEqualityDiscard(t *testing.T) {
 				return parseTestConfig(base, raw)
 			},
 			Build: func(testConfig) (*testClient, error) { return speculative, nil },
-			Close: func(client *testClient) { client.closed = true },
+			Close: func(client *testClient) { client.closed.Store(true) },
 		})
 		done <- struct {
 			changed   bool
@@ -161,7 +162,7 @@ func TestApplyLockTimeEqualityDiscard(t *testing.T) {
 	require.NoError(t, result.err)
 	assert.False(t, result.changed)
 	assert.False(t, result.recreated)
-	assert.True(t, speculative.closed)
+	assert.True(t, speculative.closed.Load())
 	assert.Equal(t, "winner", state.Client().id)
 }
 

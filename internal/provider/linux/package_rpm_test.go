@@ -10,8 +10,6 @@ import (
 )
 
 func TestFindRpmDatabase(t *testing.T) {
-	t.Parallel()
-
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "Packages.db")
 	require.NoError(t, os.WriteFile(dbPath, []byte("SQLite format 3\x00"), 0644))
@@ -24,8 +22,6 @@ func TestFindRpmDatabase(t *testing.T) {
 }
 
 func TestFindRpmDatabaseNone(t *testing.T) {
-	t.Parallel()
-
 	dir := t.TempDir()
 	orig := rpmDatabasePaths
 	rpmDatabasePaths = []string{filepath.Join(dir, "a.db"), filepath.Join(dir, "b.sqlite")}
@@ -35,8 +31,6 @@ func TestFindRpmDatabaseNone(t *testing.T) {
 }
 
 func TestReadRpmPackageDatabasePresent(t *testing.T) {
-	t.Parallel()
-
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "Packages.db")
 	require.NoError(t, os.WriteFile(dbPath, []byte("SQLite format 3\x00"), 0644))
@@ -54,8 +48,6 @@ func TestReadRpmPackageDatabasePresent(t *testing.T) {
 }
 
 func TestReadRpmPackageDatabaseAbsent(t *testing.T) {
-	t.Parallel()
-
 	dir := t.TempDir()
 	orig := rpmDatabasePaths
 	rpmDatabasePaths = []string{filepath.Join(dir, "Packages.db")}
@@ -69,8 +61,6 @@ func TestReadRpmPackageDatabaseAbsent(t *testing.T) {
 }
 
 func TestExtractRpmPackageNames(t *testing.T) {
-	t.Parallel()
-
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "Packages.db")
 	// Simulate SQLite data pages containing package-name-like strings.
@@ -92,8 +82,6 @@ func TestExtractRpmPackageNames(t *testing.T) {
 }
 
 func TestExtractRpmPackageNamesFilterAndLimit(t *testing.T) {
-	t.Parallel()
-
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "Packages.db")
 	content := "SQLite format 3\x00" +
@@ -112,8 +100,6 @@ func TestExtractRpmPackageNamesFilterAndLimit(t *testing.T) {
 }
 
 func TestReadRpmPackageListDatabasePresent(t *testing.T) {
-	t.Parallel()
-
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "Packages.db")
 	content := "SQLite format 3\x00" +
@@ -135,8 +121,6 @@ func TestReadRpmPackageListDatabasePresent(t *testing.T) {
 }
 
 func TestReadRpmPackageListDatabaseAbsent(t *testing.T) {
-	t.Parallel()
-
 	dir := t.TempDir()
 	orig := rpmDatabasePaths
 	rpmDatabasePaths = []string{filepath.Join(dir, "Packages.db")}

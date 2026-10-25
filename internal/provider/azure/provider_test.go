@@ -26,8 +26,6 @@ func newTestProvider(clients *azureClients, cfgs ...config.AzureConfig) *Provide
 }
 
 func TestNewProviderWiresAllCapabilities(t *testing.T) {
-	t.Parallel()
-
 	p := NewProvider(config.AzureConfig{})
 	require.NotNil(t, p)
 	assert.Equal(t, "azure", p.Name())
@@ -60,7 +58,6 @@ func TestNewProviderWiresAllCapabilities(t *testing.T) {
 }
 
 func TestProviderUpdateConfigRecreatesClientsWhenChanged(t *testing.T) {
-	t.Parallel()
 	clientInitMu.Lock()
 	defer clientInitMu.Unlock()
 
@@ -103,7 +100,6 @@ func TestProviderUpdateConfigRecreatesClientsWhenChanged(t *testing.T) {
 }
 
 func TestProviderUpdateConfigDoesNotRecreateClientsWhenUnchanged(t *testing.T) {
-	t.Parallel()
 	clientInitMu.Lock()
 	defer clientInitMu.Unlock()
 
