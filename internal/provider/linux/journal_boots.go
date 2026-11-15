@@ -3,13 +3,10 @@ package linux
 import (
 	"context"
 	"log/slog"
-	"os"
-	"path/filepath"
-	"sort"
 	"time"
 
 	"github.com/marvin-agent/marvin/internal/provider/common"
-	"github.com/marvin-agent/marvin/internal/provider/linux/procfs"
+	"github.com/marvin-agent/marvin/internal/provider/linux/journal"
 	"github.com/marvin-agent/marvin/internal/task"
 )
 
@@ -20,21 +17,40 @@ const journalBootsSchema = `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "title": "linux.journal.boots Parameters",
-  "description": "Parameters for linux.journal.boots."
+  "description": "Parameters for linux.journal.boots. Takes no parameters; returns boots known to the systemd journal."
 }`
 
 func (t *journalBootsTask) Name() string       { return "linux.journal.boots" }
 func (t *journalBootsTask) JSONSchema() string { return journalBootsSchema }
 
 func (t *journalBootsTask) Execute(ctx context.Context, params map[string]any) (task.Result, error) {
-	_ = ctx
+	_ = params
 	slog.Info("journal.boots starting", "capability", t.Name())
 
 	cfg := t.provider.CurrentConfig()
-	boots, err := listJournalBoots(t.provider.CurrentReader(), cfg.JournalDirectory)
+	reader, err := journal.Open(journalDirs(cfg.JournalDirectory))
 	if err != nil {
 		slog.Info("journal.boots failed", "capability", t.Name(), "error", err)
 		return common.TaskFailure(err)
+	}
+	defer reader.Close()
+
+	found, err := reader.Boots(ctx)
+	if err != nil {
+		slog.Info("journal.boots failed", "capability", t.Name(), "error", err)
+		return common.TaskFailure(err)
+	}
+
+	boots := make([]journalBoot, 0, len(found))
+	for _, b := range found {
+		boot := journalBoot{ID: b.ID}
+		if !b.FirstEntry.IsZero() {
+			boot.FirstEntry = b.FirstEntry.UTC().Format(time.RFC3339)
+		}
+		if !b.LastEntry.IsZero() {
+			boot.LastEntry = b.LastEntry.UTC().Format(time.RFC3339)
+		}
+		boots = append(boots, boot)
 	}
 
 	result := map[string]any{
@@ -49,57 +65,8 @@ var _ task.Task = (*journalBootsTask)(nil)
 
 // journalBoot describes a single boot known to journald.
 type journalBoot struct {
-	ID        string `json:"id"`
-	Timestamp string `json:"timestamp,omitempty"`
-	Source    string `json:"source,omitempty"`
-}
-
-// listJournalBoots lists boot IDs by scanning the journal directory layout.
-// Each subdirectory under <journalDir>/<machine-id>/ is a boot ID. It also
-// checks /run/log/journal/ for runtime journals.
-func listJournalBoots(r *procfs.Reader, journalDir string) ([]journalBoot, error) {
-	if journalDir == "" {
-		journalDir = "/var/log/journal"
-	}
-
-	var boots []journalBoot
-	seen := make(map[string]bool)
-
-	collect := func(base string) {
-		machineIDs, err := r.ReadDirNames(base)
-		if err != nil {
-			return
-		}
-		for _, machineID := range machineIDs {
-			bootDir := filepath.Join(base, machineID)
-			if !r.IsDir(bootDir) {
-				continue
-			}
-			bootIDs, err := r.ReadDirNames(bootDir)
-			if err != nil {
-				continue
-			}
-			for _, bootID := range bootIDs {
-				if seen[bootID] {
-					continue
-				}
-				seen[bootID] = true
-
-				boot := journalBoot{ID: bootID, Source: base}
-				if info, err := os.Stat(r.Path(bootDir, bootID)); err == nil {
-					boot.Timestamp = info.ModTime().UTC().Format(time.RFC3339)
-				}
-				boots = append(boots, boot)
-			}
-		}
-	}
-
-	collect(journalDir)
-	collect("/run/log/journal")
-
-	sort.Slice(boots, func(i, j int) bool {
-		return boots[i].ID < boots[j].ID
-	})
-
-	return boots, nil
+	ID         string `json:"id"`
+	FirstEntry string `json:"first_entry,omitempty"`
+	LastEntry  string `json:"last_entry,omitempty"`
+	Source     string `json:"source,omitempty"`
 }

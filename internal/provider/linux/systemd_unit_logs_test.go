@@ -2,70 +2,119 @@ package linux
 
 import (
 	"context"
-	"os"
-	"path/filepath"
+	"fmt"
 	"testing"
 
-	"github.com/marvin-agent/marvin/internal/config"
-	"github.com/marvin-agent/marvin/internal/provider/linux/procfs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSystemdUnitLogsTask(t *testing.T) {
+func TestSystemdUnitLogsTaskTail(t *testing.T) {
 	t.Parallel()
 
-	dir := t.TempDir()
-	machineDir := filepath.Join(dir, "var", "log", "journal", "machineid123")
-	require.NoError(t, os.MkdirAll(machineDir, 0755))
-	require.NoError(t, os.WriteFile(filepath.Join(machineDir, "system.journal"), []byte("data"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(machineDir, "user-1000.journal"), []byte("data"), 0644))
-
-	p := &Provider{
-		reader: &procfs.Reader{Root: dir},
-		config: config.LinuxConfig{JournalDirectory: "/var/log/journal"},
+	const (
+		alpha = "marvin-fixture-alpha.service"
+		beta  = "marvin-fixture-beta.service"
+		gamma = "marvin-fixture-gamma.service"
+	)
+	base := uint64(1_700_000_000_000_000) // fixed usec, not "now"
+	units := []string{alpha, beta, gamma}
+	var fixture []testJournalEntry
+	for i := 0; i < 30; i++ {
+		fixture = append(fixture, testJournalEntry{
+			message:  fmt.Sprintf("entry-%02d", i),
+			priority: fmt.Sprintf("%d", i%8),
+			unit:     units[i%3],
+			realtime: base + uint64(i)*1_000_000,
+		})
 	}
-	task := &systemdUnitLogsTask{provider: p}
+	dir := t.TempDir()
+	writeTestJournalAtMachineDir(t, dir, mustTestUUID(t, testJournalBootID), fixture)
 
-	res, err := task.Execute(context.Background(), map[string]any{"unit": "user"})
+	task := &systemdUnitLogsTask{provider: testJournalProvider(dir)}
+	res, err := task.Execute(context.Background(), map[string]any{"unit": alpha, "limit": 4})
 	require.NoError(t, err)
-	require.True(t, res.Success)
+	require.True(t, res.Success, "error: %v", res.Error)
 
 	data := res.Data.(map[string]any)
-	assert.Equal(t, "user", data["unit"])
-	files := data["journal_files"].([]journalFile)
-	require.Len(t, files, 1)
-	assert.Equal(t, "user-1000.journal", files[0].Name)
-	assert.NotEmpty(t, data["note"])
+	assert.Equal(t, alpha, data["unit"])
+	assert.Equal(t, 4, data["count"])
+	_, hasNote := data["note"]
+	assert.False(t, hasNote, "result must not contain the legacy note key")
+
+	// alpha entries are fixture indexes 0,3,...,27; tail returns the newest
+	// 4 first: 27, 24, 21, 18.
+	entries := data["entries"].([]JournalEntry)
+	require.Len(t, entries, 4)
+	for i, idx := range []int{27, 24, 21, 18} {
+		assert.Equal(t, fmt.Sprintf("entry-%02d", idx), entries[i].Message, "entry %d", i)
+		assert.Equal(t, alpha, entries[i].Unit, "entry %d", i)
+		assert.Equal(t, fmt.Sprintf("%d", idx%8), entries[i].Priority, "entry %d", i)
+		assert.Equal(t, entries[i].Message, entries[i].Fields["MESSAGE"], "entry %d", i)
+	}
+}
+
+func TestSystemdUnitLogsTaskLimitCap(t *testing.T) {
+	t.Parallel()
+
+	const unit = "marvin-fixture-cap.service"
+	base := uint64(1_700_000_000_000_000)
+	var fixture []testJournalEntry
+	for i := 0; i < 520; i++ {
+		fixture = append(fixture, testJournalEntry{
+			message:  fmt.Sprintf("entry-%03d", i),
+			priority: "6",
+			unit:     unit,
+			realtime: base + uint64(i)*1_000,
+		})
+	}
+	dir := t.TempDir()
+	writeTestJournalAtMachineDir(t, dir, mustTestUUID(t, testJournalBootID), fixture)
+
+	task := &systemdUnitLogsTask{provider: testJournalProvider(dir)}
+	res, err := task.Execute(context.Background(), map[string]any{"unit": unit, "limit": 1000})
+	require.NoError(t, err)
+	require.True(t, res.Success, "error: %v", res.Error)
+
+	data := res.Data.(map[string]any)
+	assert.Equal(t, 500, data["count"], "limit must be capped at 500")
+	entries := data["entries"].([]JournalEntry)
+	require.Len(t, entries, 500)
+	assert.Equal(t, "entry-519", entries[0].Message)
+	assert.Equal(t, "entry-020", entries[499].Message)
 }
 
 func TestSystemdUnitLogsTaskNoFiles(t *testing.T) {
 	t.Parallel()
 
-	p := &Provider{
-		reader: &procfs.Reader{Root: t.TempDir()},
-		config: config.LinuxConfig{JournalDirectory: "/var/log/journal"},
-	}
-	task := &systemdUnitLogsTask{provider: p}
-
-	res, err := task.Execute(context.Background(), map[string]any{"unit": "sshd.service"})
+	task := &systemdUnitLogsTask{provider: testJournalProvider(t.TempDir())}
+	res, err := task.Execute(context.Background(), map[string]any{"unit": "marvin-fixture-none.service"})
 	require.NoError(t, err)
-	require.True(t, res.Success)
+	require.True(t, res.Success, "error: %v", res.Error)
 
 	data := res.Data.(map[string]any)
 	assert.Empty(t, data["journal_files"].([]journalFile))
+	assert.Empty(t, data["entries"].([]JournalEntry))
+	assert.Equal(t, 0, data["count"])
 }
 
 func TestSystemdUnitLogsTaskMissingUnit(t *testing.T) {
 	t.Parallel()
 
-	p := &Provider{
-		reader: &procfs.Reader{Root: t.TempDir()},
-		config: config.LinuxConfig{JournalDirectory: "/var/log/journal"},
-	}
-	task := &systemdUnitLogsTask{provider: p}
-
+	task := &systemdUnitLogsTask{provider: testJournalProvider(t.TempDir())}
 	res, err := task.Execute(context.Background(), map[string]any{})
+	require.NoError(t, err)
+	assert.False(t, res.Success)
+}
+
+func TestSystemdUnitLogsTaskBadLimit(t *testing.T) {
+	t.Parallel()
+
+	task := &systemdUnitLogsTask{provider: testJournalProvider(t.TempDir())}
+	res, err := task.Execute(context.Background(), map[string]any{
+		"unit":  "marvin-fixture-alpha.service",
+		"limit": -1,
+	})
 	require.NoError(t, err)
 	assert.False(t, res.Success)
 }

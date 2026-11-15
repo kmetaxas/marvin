@@ -2,13 +2,17 @@ package linux
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/marvin-agent/marvin/internal/provider/common"
+	"github.com/marvin-agent/marvin/internal/provider/linux/journal"
 	"github.com/marvin-agent/marvin/internal/provider/linux/procfs"
 	"github.com/marvin-agent/marvin/internal/task"
 )
@@ -28,15 +32,19 @@ const journalQuerySchema = `{
     },
     "priority": {
       "type": "string",
-      "description": "Priority filter (e.g. err, warning)"
+      "description": "Priority ceiling as a name (emerg, alert, crit, err, warning, notice, info, debug) or a number 0-7; entries above the ceiling are excluded"
     },
     "since": {
       "type": "string",
-      "description": "ISO 8601 timestamp start"
+      "description": "Start timestamp (RFC3339, YYYY-MM-DDTHH:MM:SS, or YYYY-MM-DD)"
     },
     "until": {
       "type": "string",
-      "description": "ISO 8601 timestamp end"
+      "description": "End timestamp (RFC3339, YYYY-MM-DDTHH:MM:SS, or YYYY-MM-DD)"
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Maximum number of journal entries to return (default 50, capped at 500)"
     }
   }
 }`
@@ -45,7 +53,6 @@ func (t *journalQueryTask) Name() string       { return "linux.journal.query" }
 func (t *journalQueryTask) JSONSchema() string { return journalQuerySchema }
 
 func (t *journalQueryTask) Execute(ctx context.Context, params map[string]any) (task.Result, error) {
-	_ = ctx
 	slog.Info("journal.query starting", "capability", t.Name())
 
 	service, err := common.OptionalString(params, "service", "")
@@ -64,6 +71,23 @@ func (t *journalQueryTask) Execute(ctx context.Context, params map[string]any) (
 	if err != nil {
 		return common.TaskFailure(err)
 	}
+	limit, err := journalEntryLimit(params)
+	if err != nil {
+		return common.TaskFailure(err)
+	}
+
+	ceiling, err := parsePriorityCeiling(priority)
+	if err != nil {
+		return common.TaskFailure(err)
+	}
+	sinceTime, err := parseJournalTime(since)
+	if err != nil {
+		return common.TaskFailure(err)
+	}
+	untilTime, err := parseJournalTime(until)
+	if err != nil {
+		return common.TaskFailure(err)
+	}
 
 	cfg := t.provider.CurrentConfig()
 	files, err := listJournalFiles(t.provider.CurrentReader(), cfg.JournalDirectory, service)
@@ -72,20 +96,142 @@ func (t *journalQueryTask) Execute(ctx context.Context, params map[string]any) (
 		return common.TaskFailure(err)
 	}
 
+	reader, err := journal.Open(journalDirs(cfg.JournalDirectory))
+	if err != nil {
+		slog.Info("journal.query failed", "capability", t.Name(), "error", err)
+		return common.TaskFailure(err)
+	}
+	defer reader.Close()
+
+	entries, err := reader.Query(ctx, journal.Query{
+		MatchUnit:   service,
+		PriorityMax: ceiling,
+		Since:       sinceTime,
+		Until:       untilTime,
+		Limit:       limit,
+	})
+	if err != nil {
+		slog.Info("journal.query failed", "capability", t.Name(), "error", err)
+		return common.TaskFailure(err)
+	}
+
 	result := map[string]any{
 		"files":    files,
-		"count":    len(files),
 		"service":  service,
 		"priority": priority,
 		"since":    since,
 		"until":    until,
-		"note":     "Full journal entry parsing requires a journal reader library; this capability lists available journal files only.",
+		"limit":    limit,
+		"entries":  journalEntries(entries),
+		"count":    len(entries),
 	}
-	slog.Info("journal.query succeeded", "capability", t.Name(), "count", len(files))
+	slog.Info("journal.query succeeded", "capability", t.Name(), "count", len(entries))
 	return common.SuccessResult(result), nil
 }
 
 var _ task.Task = (*journalQueryTask)(nil)
+
+// journalEntryLimit extracts the optional "limit" parameter: default 50,
+// capped at 500, must be positive.
+func journalEntryLimit(params map[string]any) (int, error) {
+	limit, err := common.OptionalInt(params, "limit", 50)
+	if err != nil {
+		return 0, err
+	}
+	if limit <= 0 {
+		return 0, fmt.Errorf("parameter limit must be greater than 0")
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	return limit, nil
+}
+
+// journalDirs returns the journal directories to scan: the configured
+// directory (defaulting to /var/log/journal) plus the runtime directory.
+func journalDirs(cfgDir string) []string {
+	if cfgDir == "" {
+		cfgDir = "/var/log/journal"
+	}
+	return []string{cfgDir, "/run/log/journal"}
+}
+
+// journalPriorityLevels maps syslog priority names to numeric levels.
+var journalPriorityLevels = map[string]int{
+	"emerg":   0,
+	"alert":   1,
+	"crit":    2,
+	"err":     3,
+	"warning": 4,
+	"notice":  5,
+	"info":    6,
+	"debug":   7,
+}
+
+// parsePriorityCeiling converts a priority parameter to a numeric ceiling.
+// An empty value yields -1 (no filter).
+func parsePriorityCeiling(value string) (int, error) {
+	if value == "" {
+		return -1, nil
+	}
+	if level, ok := journalPriorityLevels[strings.ToLower(value)]; ok {
+		return level, nil
+	}
+	if level, err := strconv.Atoi(value); err == nil && level >= 0 && level <= 7 {
+		return level, nil
+	}
+	return 0, fmt.Errorf("invalid priority %q: expected emerg, alert, crit, err, warning, notice, info, debug, or 0-7", value)
+}
+
+// journalTimeLayouts are the accepted timestamp formats (bare formats are UTC).
+var journalTimeLayouts = []string{
+	time.RFC3339,
+	"2006-01-02T15:04:05",
+	"2006-01-02",
+}
+
+// parseJournalTime parses a timestamp parameter. An empty value yields nil.
+func parseJournalTime(value string) (*time.Time, error) {
+	if value == "" {
+		return nil, nil
+	}
+	for _, layout := range journalTimeLayouts {
+		if parsed, err := time.Parse(layout, value); err == nil {
+			ts := parsed.UTC()
+			return &ts, nil
+		}
+	}
+	return nil, fmt.Errorf("invalid timestamp %q: expected RFC3339, YYYY-MM-DDTHH:MM:SS, or YYYY-MM-DD", value)
+}
+
+// journalEntries converts adapter entries to the structured result form.
+func journalEntries(entries []journal.Entry) []JournalEntry {
+	out := make([]JournalEntry, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, journalEntryFrom(e))
+	}
+	return out
+}
+
+// journalEntryFrom maps one adapter entry onto JournalEntry.
+func journalEntryFrom(e journal.Entry) JournalEntry {
+	out := JournalEntry{
+		Timestamp:  e.Timestamp.UTC().Format(time.RFC3339),
+		Message:    e.Fields["MESSAGE"],
+		Priority:   e.Fields["PRIORITY"],
+		Unit:       e.Fields["_SYSTEMD_UNIT"],
+		Identifier: e.Fields["SYSLOG_IDENTIFIER"],
+		BootID:     e.Fields["_BOOT_ID"],
+		Fields:     e.Fields,
+	}
+	if pid, err := strconv.Atoi(e.Fields["_PID"]); err == nil {
+		out.PID = pid
+	}
+	if uid, err := strconv.Atoi(e.Fields["_UID"]); err == nil {
+		out.UID = uid
+	}
+	return out
+}
 
 // journalFile describes a journal file discovered on disk.
 type journalFile struct {
